@@ -1,11 +1,11 @@
 [![CircleCI](https://dl.circleci.com/status-badge/img/circleci/X1fiE4koKU88Z9sKwWoPAH/T3F3Mv6HZoDH8Y7VMceoir/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/X1fiE4koKU88Z9sKwWoPAH/T3F3Mv6HZoDH8Y7VMceoir/tree/main)
 ![Crates.io Version](https://img.shields.io/crates/v/ss-tools?style=flat-square&color=blue)
 
-# RUST-PROJECT-TEMPLATE
+# Rust Semantic Scholar API Tools
 
 Tools for Semantic Scholar API.
 
-<img src="LOGO.png" alt="LOGO" width="150" height="150">
+<img src="../LOGO.png" alt="LOGO" width="150" height="150">
 
 ## Quick Start
 
