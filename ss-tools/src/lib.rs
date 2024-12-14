@@ -1,4 +1,5 @@
 use dotenvy::dotenv;
+use fxhash::FxHashMap;
 use reqwest::{self as request, header};
 use serde::{Deserialize, Serialize};
 
@@ -262,8 +263,13 @@ pub struct SemanticScholar {
 impl SemanticScholar {
     pub fn new() -> Self {
         dotenv().ok();
+        let vars = FxHashMap::from_iter(std::env::vars().into_iter().map(|(k, v)| (k, v)));
+        let api_key = vars
+            .get("SEMANTIC_SCHOLAR_API_KEY")
+            .unwrap_or(&"".to_string())
+            .to_string();
         Self {
-            api_key: std::env::var("SEMANTIC_SCHOLAR_API_KEY").unwrap(),
+            api_key: api_key,
             base_url: "https://api.semanticscholar.org/graph/v1/".to_string(),
             endpoint: SsEndpoint::GetPaperTitle,
             query_text: "".to_string(),
