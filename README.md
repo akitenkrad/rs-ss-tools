@@ -17,6 +17,14 @@ To start using `ss-tools`, just add it to your project's dependencies in the `Ca
 > cargo add ss-tools
 ```
 
+### API Key
+
+If you have an API key, set it as an environmental value in a `.env` file
+
+```text
+SEMANTIC_SCHOLAR_API_KEY = xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
 Then, import it in your program;
 
 ```rust
