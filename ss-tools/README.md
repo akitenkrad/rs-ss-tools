@@ -90,8 +90,9 @@ assert_eq!(
     paper_details.clone().title.unwrap().to_lowercase(),
     "attention is all you need".to_string()
 );
-
 ```
+
+For detials about `SsResponse`, see the document [Struct SsResponse](https://docs.rs/ss-tools/0.2.1/ss_tools/struct.SsResponse.html).
 
 ### Get references of a paper
 
@@ -145,13 +146,20 @@ assert!(paper_citations.data.len() > 10);
 
 COMMING SOON!
 
+## Updates
+
+### 0.2.2
+
+- Fixed README.md
+  - added the Semantic Scholar instruction about API key.
+
+### 0.2.1
+
+- Fixed README.md
+
 ### 0.2.0
 
 - apply the Levenshtein algorithm to extract the correct title.
 - added retry loop when the Semantic Scholar API fails.
 - added new API to get citations of a paper
 - added new API to get references of a paper
-
-### 0.2.1
-
-- Fixed README.md

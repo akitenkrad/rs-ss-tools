@@ -147,13 +147,18 @@ COMMING SOON!
 
 ## Updates
 
+### 0.2.2
+
+- Fixed README.md
+  - added the Semantic Scholar instruction about API key.
+
+### 0.2.1
+
+- Fixed README.md
+
 ### 0.2.0
 
 - apply the Levenshtein algorithm to extract the correct title.
 - added retry loop when the Semantic Scholar API fails.
 - added new API to get citations of a paper
 - added new API to get references of a paper
-
-### 0.2.1
-
-- Fixed README.md
