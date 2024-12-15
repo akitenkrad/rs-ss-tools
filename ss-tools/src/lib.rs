@@ -1,10 +1,16 @@
+use anyhow::{Error, Result};
 use dotenvy::dotenv;
 use fxhash::FxHashMap;
+use indicatif::ProgressBar;
 use reqwest::{self as request, header};
 use serde::{Deserialize, Serialize};
 
+type SsScore = f64;
+type LevSimilarityScore = f64;
+
 #[cfg(test)]
 mod tests;
+pub mod utils;
 
 #[derive(Debug, PartialEq)]
 pub enum SsEndpoint {
@@ -67,6 +73,10 @@ pub enum SsField {
     Citations(Vec<SsField>),
     References(Vec<SsField>),
     Embedding,
+    Contexts,
+    Intents,
+    IsInfluential,
+    ContextsWithIntent,
 }
 
 impl SsField {
@@ -116,6 +126,10 @@ impl SsField {
                 return fields;
             }
             SsField::Embedding => "embedding.specter_v2".to_string(),
+            SsField::Contexts => "contexts".to_string(),
+            SsField::Intents => "intents".to_string(),
+            SsField::IsInfluential => "isInfluential".to_string(),
+            SsField::ContextsWithIntent => "contextsWithIntent".to_string(),
         }
     }
 }
@@ -248,6 +262,37 @@ pub struct SsResponsePpaerIds {
     pub data: Vec<SsResponse>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SsResponsePaperContext {
+    #[serde(default = "default_value")]
+    pub context: Option<String>,
+    #[serde(default = "default_value")]
+    pub intents: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SsResponseData {
+    #[serde(default = "default_value")]
+    pub contexts: Option<Vec<String>>,
+    #[serde(default = "default_value")]
+    pub intents: Option<Vec<String>>,
+    #[serde(rename = "contextsWithIntent", default = "default_value")]
+    pub contexts_with_intent: Option<Vec<SsResponsePaperContext>>,
+    #[serde(default = "default_value")]
+    pub isinfluential: Option<bool>,
+    #[serde(rename = "citingPaper", default = "default_value")]
+    pub citing_paper: Option<SsResponse>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SsResponsePapers {
+    #[serde(default = "default_value")]
+    pub offset: Option<u64>,
+    #[serde(default = "default_value")]
+    pub next: Option<u64>,
+    pub data: Vec<SsResponseData>,
+}
+
 fn default_value<T>() -> Option<T> {
     None
 }
@@ -260,6 +305,7 @@ pub struct SemanticScholar {
     pub fields: Vec<SsField>,
 }
 
+// TODO: Add offset and limit parameters
 impl SemanticScholar {
     pub fn new() -> Self {
         dotenv().ok();
@@ -313,17 +359,57 @@ impl SemanticScholar {
                 return url;
             }
             SsEndpoint::GetReferencesOfAPaper(paper_id) => {
-                // TODO: Implement
-                return "".to_string();
+                let fields = self
+                    .fields
+                    .iter()
+                    .map(|field| field.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",");
+                let url = format!(
+                    "{}paper/{}/references?fields={}",
+                    self.base_url, paper_id, fields
+                );
+                return url;
             }
             SsEndpoint::GetCitationsOfAPaper(paper_id) => {
-                // TODO: Implement
-                return "".to_string();
+                let fields = self
+                    .fields
+                    .iter()
+                    .map(|field| field.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",");
+                let url = format!(
+                    "{}paper/{}/citations?fields={}",
+                    self.base_url, paper_id, fields
+                );
+                return url;
             }
         }
     }
 
-    pub async fn query_paper_id(&mut self, query_text: String) -> String {
+    fn sleep(&self, seconds: u64) {
+        let pb = ProgressBar::new(seconds);
+        pb.set_style(
+            indicatif::ProgressStyle::default_bar()
+                .template(
+                    "{spinner:.green} [{elapsed_precise}] [{bar:40.green/cyan}] {pos}s/{len}s {msg}",
+                )
+                .unwrap()
+                .progress_chars("█▓▒░"),
+        );
+        pb.set_message("Waiting for the next request...");
+        for _ in 0..seconds {
+            pb.inc(1);
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+        pb.finish_and_clear();
+    }
+    pub async fn query_paper_id(
+        &mut self,
+        query_text: String,
+        max_retry_count: &mut u64,
+        wait_time: u64,
+    ) -> Result<(String, String)> {
         self.query_text = query_text;
         self.endpoint = SsEndpoint::GetPaperTitle;
 
@@ -337,21 +423,75 @@ impl SemanticScholar {
             .unwrap();
 
         let url = self.build();
-        let body = client.get(url).send().await.unwrap().text().await.unwrap();
-        let response = serde_json::from_str::<SsResponsePpaerIds>(&body).unwrap();
 
-        // TODO: rerank paper ids based on the similarity of the query text
-        let paper_id = response.data[0].paper_id.clone();
+        loop {
+            if *max_retry_count == 0 {
+                return Err(Error::msg(format!(
+                    "Failed to get paper id for: {}",
+                    self.query_text
+                )));
+            }
 
-        return paper_id.unwrap();
+            let body = client
+                .get(url.clone())
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+            match serde_json::from_str::<SsResponsePpaerIds>(&body) {
+                Ok(response) => {
+                    if response.data.is_empty() {
+                        *max_retry_count -= 1;
+                        self.sleep(wait_time);
+                        continue;
+                    }
+                    let mut scores: Vec<(SsScore, LevSimilarityScore, (String, String))> =
+                        Vec::new();
+                    response.data.iter().for_each(|paper| {
+                        let title = paper.title.clone().unwrap_or("".to_string());
+                        let score = paper.match_score.unwrap_or(0.0);
+                        let lev_score = utils::levenshtein_similarity(&self.query_text, &title);
+                        scores.push((
+                            score,
+                            lev_score,
+                            (
+                                paper.paper_id.clone().unwrap(),
+                                paper.title.clone().unwrap(),
+                            ),
+                        ));
+                    });
+                    let total_score = |ss_s, lev_s| 0.5 * ss_s + 0.5 * lev_s;
+                    let (paper_id, paper_title) = scores
+                        .iter()
+                        .max_by(|a, b| {
+                            total_score(a.0, a.1)
+                                .partial_cmp(&total_score(b.0, b.1))
+                                .unwrap()
+                        })
+                        .unwrap()
+                        .2
+                        .clone();
+                    return Ok((paper_id, paper_title));
+                }
+                Err(_) => {
+                    *max_retry_count -= 1;
+                    self.sleep(wait_time);
+                    continue;
+                }
+            }
+        }
     }
 
     pub async fn query_paper_details(
         &mut self,
         paper_id: String,
         fields: Vec<SsField>,
-    ) -> SsResponse {
-        self.query_text = paper_id;
+        max_retry_count: &mut u64,
+        wait_time: u64,
+    ) -> Result<SsResponse> {
+        self.query_text = paper_id.clone();
         self.fields = fields.clone();
         self.endpoint = SsEndpoint::GetPaperDetails;
 
@@ -369,10 +509,146 @@ impl SemanticScholar {
             .unwrap();
 
         let url = self.build();
-        let body = client.get(url).send().await.unwrap().text().await.unwrap();
-        println!("{}", body);
-        let response = serde_json::from_str::<SsResponse>(&body).unwrap();
 
-        return response;
+        loop {
+            if *max_retry_count == 0 {
+                return Err(Error::msg(format!(
+                    "Failed to get paper details: {}",
+                    paper_id
+                )));
+            }
+            let body = client
+                .get(url.clone())
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+            match serde_json::from_str::<SsResponse>(&body) {
+                Ok(response) => {
+                    return Ok(response);
+                }
+                Err(_) => {
+                    *max_retry_count -= 1;
+                    self.sleep(wait_time);
+                    continue;
+                }
+            }
+        }
+    }
+
+    pub async fn query_paper_citations(
+        &mut self,
+        paper_id: String,
+        fields: Vec<SsField>,
+        max_retry_count: &mut u64,
+        wait_time: u64,
+    ) -> Result<SsResponsePapers> {
+        self.query_text = paper_id.clone();
+        self.fields = fields.clone();
+        self.endpoint = SsEndpoint::GetCitationsOfAPaper(paper_id.clone());
+
+        if !fields.contains(&SsField::PaperId) {
+            self.fields.push(SsField::PaperId);
+        }
+
+        let mut headers = header::HeaderMap::new();
+        if !self.api_key.is_empty() {
+            headers.insert("x-api-key", self.api_key.parse().unwrap());
+        }
+        let client = request::Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap();
+
+        let url = self.build();
+
+        loop {
+            if *max_retry_count == 0 {
+                return Err(Error::msg(format!(
+                    "Failed to get paper citations: {}",
+                    paper_id
+                )));
+            }
+            match client.get(url.clone()).send().await {
+                Ok(response) => {
+                    let body = response.text().await.unwrap();
+                    match serde_json::from_str::<SsResponsePapers>(&body) {
+                        Ok(response) => {
+                            return Ok(response);
+                        }
+                        Err(e) => {
+                            *max_retry_count -= 1;
+                            println!("{:?}", e);
+                            self.sleep(wait_time);
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    *max_retry_count -= 1;
+                    println!("{:?}", e);
+                    self.sleep(wait_time);
+                    continue;
+                }
+            }
+        }
+    }
+
+    pub async fn query_paper_references(
+        &mut self,
+        paper_id: String,
+        fields: Vec<SsField>,
+        max_retry_count: &mut u64,
+        wait_time: u64,
+    ) -> Result<SsResponsePapers> {
+        self.query_text = paper_id.clone();
+        self.fields = fields.clone();
+        self.endpoint = SsEndpoint::GetReferencesOfAPaper(paper_id.clone());
+
+        if !fields.contains(&SsField::PaperId) {
+            self.fields.push(SsField::PaperId);
+        }
+
+        let mut headers = header::HeaderMap::new();
+        if !self.api_key.is_empty() {
+            headers.insert("x-api-key", self.api_key.parse().unwrap());
+        }
+        let client = request::Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap();
+
+        let url = self.build();
+
+        loop {
+            if *max_retry_count == 0 {
+                return Err(Error::msg(format!(
+                    "Failed to get paper references: {}",
+                    paper_id
+                )));
+            }
+            match client.get(url.clone()).send().await {
+                Ok(response) => {
+                    let body = response.text().await.unwrap();
+                    match serde_json::from_str::<SsResponsePapers>(&body) {
+                        Ok(response) => {
+                            return Ok(response);
+                        }
+                        Err(_) => {
+                            *max_retry_count -= 1;
+                            self.sleep(wait_time);
+                            continue;
+                        }
+                    }
+                }
+                Err(_) => {
+                    *max_retry_count -= 1;
+                    self.sleep(wait_time);
+                    continue;
+                }
+            }
+        }
     }
 }

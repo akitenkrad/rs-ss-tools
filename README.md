@@ -87,12 +87,60 @@ assert_eq!(
 
 ### Get references of a paper
 
-COMMING SOON!
+```rust
+let paper_id = "204e3073870fae3d05bcbc2f6a8e263d9b72e776";
+
+let mut ss = SemanticScholar::new();
+let fields = vec![
+    SsField::Title,
+    SsField::Year,
+    SsField::Contexts,
+    SsField::Intents,
+    SsField::IsInfluential,
+    SsField::ContextsWithIntent,
+];
+
+let paper_citations: SsResponsePapers = ss
+    .query_paper_citations(paper_id.to_string(), fields, &mut 5, 10)
+    .await
+    .unwrap();
+
+// SsResponsePapers.data: Vec<SsResponse>
+assert!(paper_citations.data.len() > 10);
+```
 
 ### Get citations of a paper
 
-COMMING SOON!
+```rust
+let paper_id = "204e3073870fae3d05bcbc2f6a8e263d9b72e776";
+
+let mut ss = SemanticScholar::new();
+let fields = vec![
+    SsField::Title,
+    SsField::Year,
+    SsField::Contexts,
+    SsField::Intents,
+    SsField::IsInfluential,
+    SsField::ContextsWithIntent,
+];
+
+let paper_citations: SsResponsePapers = ss
+    .query_paper_references(paper_id.to_string(), fields, &mut 5, 10)
+    .await
+    .unwrap();
+
+// SsResponsePapers.data: Vec<SsResponse>
+assert!(paper_citations.data.len() > 10);
+```
 
 ### Get details about a author
 
 COMMING SOON!
+
+## Updates
+
+- 0.2.0
+  - apply the Levenshtein algorithm to extract the correct title.
+  - added retry loop when the Semantic Scholar API fails.
+  - added new API to get citations of a paper
+  - added new API to get references of a paper

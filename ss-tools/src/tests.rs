@@ -1,4 +1,5 @@
 use super::*;
+use crate::utils::*;
 
 #[test]
 fn test_ss_response_deserialization() {
@@ -267,12 +268,35 @@ fn test_ss_response_deserialization() {
 }
 
 #[tokio::test]
-async fn test_query_paper_id() {
+async fn test_query_paper_id_1() {
     let query_text = "attention is all you need";
 
     let mut ss = SemanticScholar::new();
-    let paper_id = ss.query_paper_id(query_text.to_string()).await;
+    let (paper_id, paper_title) = ss
+        .query_paper_id(query_text.to_string(), &mut 5, 10)
+        .await
+        .unwrap();
     assert_eq!(paper_id, "204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+    assert_eq!(
+        paper_title.to_lowercase(),
+        "attention is all you need".to_string()
+    );
+}
+
+#[tokio::test]
+async fn test_query_paper_id_2() {
+    let query_text = "truth or mirage? towards end-to-end factuality evaluation with llm-oasis";
+
+    let mut ss = SemanticScholar::new();
+    let (paper_id, paper_title) = ss
+        .query_paper_id(query_text.to_string(), &mut 5, 10)
+        .await
+        .unwrap();
+    assert_eq!(paper_id, "ed84af14d0ff2438f8c22ed53492cd2aa128ba8c");
+    assert_eq!(
+        paper_title.to_lowercase(),
+        "truth or mirage? towards end-to-end factuality evaluation with llm-oasis".to_string()
+    );
 }
 
 #[tokio::test]
@@ -306,9 +330,123 @@ async fn test_query_paper_details() {
         SsField::Embedding,
     ];
 
-    let paper_details = ss.query_paper_details(paper_id.to_string(), fields).await;
+    let paper_details = ss
+        .query_paper_details(paper_id.to_string(), fields, &mut 5, 10)
+        .await
+        .unwrap();
     assert_eq!(
         paper_details.clone().title.unwrap().to_lowercase(),
         "attention is all you need".to_string()
     );
+
+    println!("{}", serde_json::to_string_pretty(&paper_details).unwrap());
+}
+
+#[tokio::test]
+async fn test_query_paper_citations() {
+    let paper_id = "204e3073870fae3d05bcbc2f6a8e263d9b72e776";
+
+    let mut ss = SemanticScholar::new();
+    let fields = vec![
+        SsField::Title,
+        SsField::Year,
+        SsField::Contexts,
+        SsField::Intents,
+        SsField::IsInfluential,
+        SsField::ContextsWithIntent,
+    ];
+
+    let paper_citations = ss
+        .query_paper_citations(paper_id.to_string(), fields, &mut 5, 10)
+        .await
+        .unwrap();
+    assert!(paper_citations.data.len() > 10);
+
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&paper_citations).unwrap()
+    );
+}
+
+#[test]
+fn test_levenshtein_dist() {
+    let s1 = "kitten";
+    let s2 = "sitting";
+    println!(
+        "DIST: {} NORMALIZED_DIST: {:.2} SIMILARITY: {:.2}",
+        levenshtein_dist(s1, s2),
+        levenshtein_dist_normalized(s1, s2),
+        levenshtein_similarity(s1, s2)
+    );
+    assert_eq!(levenshtein_dist(s1, s2), 3);
+
+    let s1 = "saturday";
+    let s2 = "sunday";
+    println!(
+        "DIST: {} NORMALIZED_DIST: {:.2} SIMILARITY: {:.2}",
+        levenshtein_dist(s1, s2),
+        levenshtein_dist_normalized(s1, s2),
+        levenshtein_similarity(s1, s2)
+    );
+    assert_eq!(levenshtein_dist(s1, s2), 3);
+
+    let s1 = "flaw";
+    let s2 = "lawn";
+    println!(
+        "DIST: {} NORMALIZED_DIST: {:.2} SIMILARITY: {:.2}",
+        levenshtein_dist(s1, s2),
+        levenshtein_dist_normalized(s1, s2),
+        levenshtein_similarity(s1, s2)
+    );
+    assert_eq!(levenshtein_dist(s1, s2), 2);
+
+    let s1 = "flaw";
+    let s2 = "flawn";
+    println!(
+        "DIST: {} NORMALIZED_DIST: {:.2} SIMILARITY: {:.2}",
+        levenshtein_dist(s1, s2),
+        levenshtein_dist_normalized(s1, s2),
+        levenshtein_similarity(s1, s2)
+    );
+    assert_eq!(levenshtein_dist(s1, s2), 1);
+
+    let s1 = "flaw";
+    let s2 = "flaw";
+    println!(
+        "DIST: {} NORMALIZED_DIST: {:.2} SIMILARITY: {:.2}",
+        levenshtein_dist(s1, s2),
+        levenshtein_dist_normalized(s1, s2),
+        levenshtein_similarity(s1, s2)
+    );
+    assert_eq!(levenshtein_dist(s1, s2), 0);
+
+    let s1 = "attention is all you need";
+    let s2 = "attention is not all you need";
+    println!(
+        "DIST: {} NORMALIZED_DIST: {:.2} SIMILARITY: {:.2}",
+        levenshtein_dist(s1, s2),
+        levenshtein_dist_normalized(s1, s2),
+        levenshtein_similarity(s1, s2)
+    );
+    assert_eq!(levenshtein_dist(s1, s2), 4);
+
+    let s1 = "attention is all you need";
+    let s2 = "transformer is all you need";
+    println!(
+        "DIST: {} NORMALIZED_DIST: {:.2} SIMILARITY: {:.2}",
+        levenshtein_dist(s1, s2),
+        levenshtein_dist_normalized(s1, s2),
+        levenshtein_similarity(s1, s2)
+    );
+    assert_eq!(levenshtein_dist(s1, s2), 9);
+
+    let s1 = "attention is all you need";
+    let s2 = "true or marige? towards end-to-end factuality evaluation with llm-oasis";
+    println!(
+        "DIST: {} NORMALIZED_DIST: {:.2} SIMILARITY: {:.2}",
+        levenshtein_dist(s1, s2),
+        levenshtein_dist_normalized(s1, s2),
+        levenshtein_similarity(s1, s2)
+    );
+    assert_eq!(levenshtein_dist(s1, s2), 58);
 }
