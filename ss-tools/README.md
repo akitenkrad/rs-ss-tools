@@ -148,7 +148,7 @@ COMMING SOON!
 
 ## Updates
 
-<details>
+<details open>
 <summary>0.2.2</summary>
 
 - Fixed README.md
@@ -156,14 +156,14 @@ COMMING SOON!
 
 </details>
 
-<details>
+<details open>
 <summary>0.2.1</summary>
 
 - Fixed README.md
 
 </details>
 
-<details>
+<details open>
 <summary>0.2.0</summary>
 
 - apply the Levenshtein algorithm to extract the correct title.

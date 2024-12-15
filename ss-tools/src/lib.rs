@@ -2,6 +2,7 @@ use anyhow::{Error, Result};
 use dotenvy::dotenv;
 use fxhash::FxHashMap;
 use indicatif::ProgressBar;
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC as NON_ALNUM};
 use reqwest::{self as request, header};
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +12,10 @@ type LevSimilarityScore = f64;
 #[cfg(test)]
 mod tests;
 pub mod utils;
+
+fn encode(s: &str) -> String {
+    utf8_percent_encode(s, NON_ALNUM).to_string()
+}
 
 #[derive(Debug, PartialEq)]
 pub enum SsEndpoint {
@@ -326,10 +331,8 @@ impl SemanticScholar {
     fn build(&self) -> String {
         match &self.endpoint {
             SsEndpoint::GetPaperTitle => {
-                let url = format!(
-                    "{}paper/search/match?query={}",
-                    self.base_url, self.query_text
-                );
+                let query_text = encode(&self.query_text);
+                let url = format!("{}paper/search?query={}", self.base_url, query_text);
                 return url;
             }
             SsEndpoint::GetPaperDetails => {
@@ -423,6 +426,8 @@ impl SemanticScholar {
             .unwrap();
 
         let url = self.build();
+
+        println!("URL: {}", url);
 
         loop {
             if *max_retry_count == 0 {
