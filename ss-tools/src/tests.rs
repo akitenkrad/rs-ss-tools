@@ -334,8 +334,13 @@ async fn test_query_paper_details() {
         .query_paper_details(paper_id.to_string(), fields, &mut 5, 10)
         .await
         .unwrap();
+    let title = if let Some(title) = paper_details.title.clone() {
+        title
+    } else {
+        panic!("Title not found");
+    };
     assert_eq!(
-        paper_details.clone().title.unwrap().to_lowercase(),
+        title.to_lowercase(),
         "attention is all you need".to_string()
     );
 
