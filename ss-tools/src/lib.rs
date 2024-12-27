@@ -1,3 +1,23 @@
+//! # Semantic Scholar Tools
+//! This library provides tools to interact with the Semantic Scholar API.
+//!
+//! ## Implemented Endpoints
+//! | Endpoint | Implementation | Reference |
+//! | --- |:---:|:---:|
+//! | [Suggest paper query completions](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_autocomplete) | - | |
+//! | [Get details for multiple papers at once](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/post_graph_get_papers)| - | |
+//! | [Paper relevance search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_relevance_search) | ✅ | [`SemanticScholar::query_paper_id`] |
+//! | [Paper bulk search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_bulk_search) | ✅  | [`SemanticScholar::query_paper_batch`] |
+//! | [Paper title search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_title_search) | ✅ |[`SemanticScholar::query_paper_id`] |
+//! | [Details about a paper](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper) | ✅ | [`SemanticScholar::query_paper_details`] |
+//! | [Details about a paper's authors](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_authors) | - | |
+//! | [Details about a paper's citations](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_citations) | ✅ | [`SemanticScholar::query_paper_citations`] |
+//! | [Details about a paper's references](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_references) | ✅ | [`SemanticScholar::query_paper_references`] |
+//! | [Get details for multiple authors at once](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/post_graph_get_authors) | - | |
+//! | [Search for authors by name](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_search) | - | |
+//! | [Details about an author](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author) | - | |
+//! | [Details about an author's papers](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_papers) | - | |
+
 use anyhow::{Error, Result};
 use dotenvy::dotenv;
 use fxhash::FxHashMap;
@@ -17,8 +37,10 @@ fn encode(s: &str) -> String {
     utf8_percent_encode(s, NON_ALNUM).to_string()
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum SsEndpoint {
+    #[default]
+    PostPaperBatch,
     GetPaperTitle,
     GetPaperDetails,
     GetAuthorDetails,
@@ -211,7 +233,7 @@ pub struct SsResponseEmbedding {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SsResponse {
+pub struct SsPaper {
     #[serde(rename = "paperId", default = "default_value")]
     pub paper_id: Option<String>,
     #[serde(rename = "corpusId", default = "default_value")]
@@ -253,9 +275,9 @@ pub struct SsResponse {
     #[serde(default = "default_value")]
     pub authors: Option<Vec<SsResponseAuthor>>,
     #[serde(default = "default_value")]
-    pub citations: Option<Vec<SsResponse>>,
+    pub citations: Option<Vec<SsPaper>>,
     #[serde(default = "default_value")]
-    pub references: Option<Vec<SsResponse>>,
+    pub references: Option<Vec<SsPaper>>,
     #[serde(default = "default_value")]
     pub embedding: Option<SsResponseEmbedding>,
     #[serde(rename = "matchScore", default = "default_value")]
@@ -264,7 +286,7 @@ pub struct SsResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SsResponsePpaerIds {
-    pub data: Vec<SsResponse>,
+    pub data: Vec<SsPaper>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -286,7 +308,7 @@ pub struct SsResponseData {
     #[serde(default = "default_value")]
     pub isinfluential: Option<bool>,
     #[serde(rename = "citingPaper", default = "default_value")]
-    pub citing_paper: Option<SsResponse>,
+    pub citing_paper: Option<SsPaper>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -302,6 +324,7 @@ fn default_value<T>() -> Option<T> {
     None
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct SemanticScholar {
     pub api_key: String,
     pub base_url: String,
@@ -330,6 +353,19 @@ impl SemanticScholar {
 
     fn build(&self) -> String {
         match &self.endpoint {
+            SsEndpoint::PostPaperBatch => {
+                if self.fields.is_empty() {
+                    return format!("{}paper/batch", self.base_url);
+                } else {
+                    let fields = self
+                        .fields
+                        .iter()
+                        .map(|field| field.to_string())
+                        .collect::<Vec<String>>()
+                        .join(",");
+                    return format!("{}paper/batch?fields={}", self.base_url, fields);
+                }
+            }
             SsEndpoint::GetPaperTitle => {
                 let query_text = encode(&self.query_text);
                 let url = format!("{}paper/search?query={}", self.base_url, query_text);
@@ -407,6 +443,63 @@ impl SemanticScholar {
         }
         pb.finish_and_clear();
     }
+
+    pub async fn query_paper_batch(
+        &mut self,
+        paper_ids: Vec<&str>,
+        fields: Vec<SsField>,
+        max_retry_count: &mut u64,
+        wait_time: u64,
+    ) -> Result<Vec<SsPaper>> {
+        self.fields = fields.clone();
+        self.endpoint = SsEndpoint::PostPaperBatch;
+
+        let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        if !self.api_key.is_empty() {
+            headers.insert("x-api-key", self.api_key.parse().unwrap());
+        }
+        let client = request::Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap();
+
+        let url = self.build();
+        let body = format!(
+            "{{\"ids\":[{}]}}",
+            paper_ids
+                .iter()
+                .map(|v| format!("\"{}\"", v))
+                .collect::<Vec<String>>()
+                .join(",")
+        );
+
+        loop {
+            if *max_retry_count == 0 {
+                return Err(Error::msg("Failed to get papers"));
+            }
+            let body = client
+                .post(url.clone())
+                .body(body.clone())
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+            match serde_json::from_str::<Vec<SsPaper>>(&body) {
+                Ok(response) => {
+                    return Ok(response);
+                }
+                Err(_) => {
+                    *max_retry_count -= 1;
+                    self.sleep(wait_time);
+                    continue;
+                }
+            }
+        }
+    }
+
     pub async fn query_paper_id(
         &mut self,
         query_text: String,
@@ -495,7 +588,7 @@ impl SemanticScholar {
         fields: Vec<SsField>,
         max_retry_count: &mut u64,
         wait_time: u64,
-    ) -> Result<SsResponse> {
+    ) -> Result<SsPaper> {
         self.query_text = paper_id.clone();
         self.fields = fields.clone();
         self.endpoint = SsEndpoint::GetPaperDetails;
@@ -530,7 +623,7 @@ impl SemanticScholar {
                 .text()
                 .await
                 .unwrap();
-            match serde_json::from_str::<SsResponse>(&body) {
+            match serde_json::from_str::<SsPaper>(&body) {
                 Ok(response) => {
                     return Ok(response);
                 }

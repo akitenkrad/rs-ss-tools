@@ -5,6 +5,8 @@
 
 Tools for Semantic Scholar API.
 
+[Documents](https://crates.io/crates/ss-tools)
+
 <img src="../LOGO.png" alt="LOGO" width="150" height="150">
 
 ## Quick Start
@@ -147,6 +149,14 @@ assert!(paper_citations.data.len() > 10);
 COMMING SOON!
 
 ## Updates
+
+<details open>
+<summary>0.2.3</summary>
+
+- Added a new endpoint: [`Get details for multiple papers at once`](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/post_graph_get_papers)
+- Updated documents.
+
+</details>
 
 <details open>
 <summary>0.2.2</summary>

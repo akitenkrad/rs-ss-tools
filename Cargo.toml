@@ -3,7 +3,7 @@ resolver = "2"
 members = ["ss-tools"]
 
 [workspace.package]
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 authors = ["akitenkrad"]
 description = "Tools for Semantic Scholar API"
@@ -11,7 +11,7 @@ repository = "https://github.com/akitenkrad/rs-ss-tools.git"
 license = "MIT"
 
 [workspace.dependencies]
-anyhow = "1.0.94"
+anyhow = "1.0.95"
 
 [workspace.metadata.release]
 tag-prefix = ""

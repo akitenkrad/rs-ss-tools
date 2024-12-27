@@ -5,7 +5,9 @@
 
 Tools for Semantic Scholar API.
 
-<img src="LOGO.png" alt="LOGO" width="150" height="150">
+[Documents](https://crates.io/crates/ss-tools)
+
+<img src="../LOGO.png" alt="LOGO" width="150" height="150">
 
 ## Quick Start
 
@@ -45,7 +47,7 @@ In the future, we plan to improve the library to output the paper most relevant 
 let query_text = "attention is all you need";
 
 let mut ss = SemanticScholar::new();
-let paper_id = ss.query_paper_id(query_text.to_string(), &mut 5, 10).await;
+let paper_id = ss.query_paper_id(query_text.to_string(), &mut 5, 10).await; // paperId, max_retry_count, wait_time(sec)
 assert_eq!(paper_id, "204e3073870fae3d05bcbc2f6a8e263d9b72e776");
 ```
 
@@ -85,13 +87,14 @@ let fields = vec![
     SsField::Embedding,
 ];
 
-let paper_details: SsResponse = ss.query_paper_details(paper_id.to_string(), fields, &mut 5, 10).await;
+let paper_details: SsResponse = ss.query_paper_details(paper_id.to_string(), fields, &mut 5, 10).await; // paper_id ,fields, max_retry_count, wait_time(sec)
 assert_eq!(
     paper_details.clone().title.unwrap().to_lowercase(),
     "attention is all you need".to_string()
 );
-
 ```
+
+For detials about `SsResponse`, see the document [Struct SsResponse](https://docs.rs/ss-tools/0.2.1/ss_tools/struct.SsResponse.html).
 
 ### Get references of a paper
 
@@ -109,7 +112,7 @@ let fields = vec![
 ];
 
 let paper_citations: SsResponsePapers = ss
-    .query_paper_citations(paper_id.to_string(), fields, &mut 5, 10)
+    .query_paper_citations(paper_id.to_string(), fields, &mut 5, 10) // paper_id, fields, max_retry_count, wait_time(sec)
     .await
     .unwrap();
 
@@ -133,7 +136,7 @@ let fields = vec![
 ];
 
 let paper_citations: SsResponsePapers = ss
-    .query_paper_references(paper_id.to_string(), fields, &mut 5, 10)
+    .query_paper_references(paper_id.to_string(), fields, &mut 5, 10) // paperId, fields, max_retry_count, wait_time(sec)
     .await
     .unwrap();
 
@@ -146,6 +149,14 @@ assert!(paper_citations.data.len() > 10);
 COMMING SOON!
 
 ## Updates
+
+<details open>
+<summary>0.2.3</summary>
+
+- Added a new endpoint: [`Get details for multiple papers at once`](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/post_graph_get_papers)
+- Updated documents.
+
+</details>
 
 <details open>
 <summary>0.2.2</summary>

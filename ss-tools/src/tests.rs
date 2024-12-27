@@ -221,7 +221,7 @@ fn test_ss_response_deserialization() {
         "text":"This paper reduces literature graph construction into familiar NLP tasks, point out research challenges due to differences from standard formulations of these tasks, and report empirical results for each task."
     }
 }"#;
-    let response = serde_json::from_str::<SsResponse>(json).unwrap();
+    let response = serde_json::from_str::<SsPaper>(json).unwrap();
 
     assert_eq!(
         response.paper_id.unwrap(),
@@ -265,6 +265,59 @@ fn test_ss_response_deserialization() {
         pv.url.unwrap(),
         "https://www.aclweb.org/anthology/venues/acl/"
     );
+}
+
+#[tokio::test]
+async fn test_query_paper_batch_without_fields() {
+    let paper_ids = vec![
+        "649def34f8be52c8b66281af98ae884c09aef38b",
+        "ARXIV:2106.15928",
+    ];
+    let fields = vec![];
+
+    let mut ss = SemanticScholar::new();
+    let papers = ss.query_paper_batch(paper_ids, fields, &mut 5, 10).await;
+
+    match papers {
+        Ok(papers) => {
+            for paper in papers {
+                println!("{}", serde_json::to_string_pretty(&paper).unwrap());
+            }
+            assert!(true)
+        }
+        Err(e) => {
+            assert!(false, "Error: {}", e.to_string())
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_query_paper_batch_with_fields() {
+    let paper_ids = vec![
+        "649def34f8be52c8b66281af98ae884c09aef38b",
+        "ARXIV:2106.15928",
+    ];
+    let fields = vec![
+        SsField::Title,
+        SsField::CitationCount,
+        SsField::ReferenceCount,
+        SsField::InfluentialCitationCount,
+    ];
+
+    let mut ss = SemanticScholar::new();
+    let papers = ss.query_paper_batch(paper_ids, fields, &mut 5, 10).await;
+
+    match papers {
+        Ok(papers) => {
+            for paper in papers {
+                println!("{}", serde_json::to_string_pretty(&paper).unwrap());
+            }
+            assert!(true)
+        }
+        Err(e) => {
+            assert!(false, "Error: {}", e.to_string())
+        }
+    }
 }
 
 #[tokio::test]
@@ -454,4 +507,59 @@ fn test_levenshtein_dist() {
         levenshtein_similarity(s1, s2)
     );
     assert_eq!(levenshtein_dist(s1, s2), 58);
+}
+
+#[test]
+fn test_levenshtein_simu() {
+    let s1 = "attention is all you need";
+    let s2 = "attention is all you need";
+    let score = levenshtein_similarity(s1, s2);
+    println!("|{}|{:.3}|", s2, score);
+
+    let s1 = "attention is all you need";
+    let s2 = "Attention Is All You Need In Speech Separation";
+    let score = levenshtein_similarity(s1, s2.to_lowercase().as_str());
+    println!("|{}|{:.3}|", s2, score);
+
+    let s1 = "attention is all you need";
+    let s2 = "Channel Attention Is All You Need for Video Frame Interpolation";
+    let score = levenshtein_similarity(s1, s2.to_lowercase().as_str());
+    println!("|{}|{:.3}|", s2, score);
+
+    let s1 = "attention is all you need";
+    let s2 = "Attention is all you need: utilizing attention in AI-enabled drug discovery";
+    let score = levenshtein_similarity(s1, s2.to_lowercase().as_str());
+    println!("|{}|{:.3}|", s2, score);
+
+    let s1 = "attention is all you need";
+    let s2 =
+        "Attention is all you need: An interpretable transformer-based asset allocation approach";
+    let score = levenshtein_similarity(s1, s2.to_lowercase().as_str());
+    println!("|{}|{:.3}|", s2, score);
+
+    let s1 = "attention is all you need";
+    let s2 =
+        "Cross-Attention is All You Need: Adapting Pretrained Transformers for Machine Translation";
+    let score = levenshtein_similarity(s1, s2.to_lowercase().as_str());
+    println!("|{}|{:.3}|", s2, score);
+
+    let s1 = "attention is all you need";
+    let s2 = "Is Space-Time Attention All You Need for Video Understanding?";
+    let score = levenshtein_similarity(s1, s2.to_lowercase().as_str());
+    println!("|{}|{:.3}|", s2, score);
+
+    let s1 = "attention is all you need";
+    let s2 = "Attention Is All You Need For Blind Room Volume Estimation";
+    let score = levenshtein_similarity(s1, s2.to_lowercase().as_str());
+    println!("|{}|{:.3}|", s2, score);
+
+    let s1 = "attention is all you need";
+    let s2 = "Graph Structure from Point Clouds: Geometric Attention is All You Need";
+    let score = levenshtein_similarity(s1, s2.to_lowercase().as_str());
+    println!("|{}|{:.3}|", s2, score);
+
+    let s1 = "attention is all you need";
+    let s2 = "Master GAN: Multiple Attention is all you Need: A Multiple Attention Guided Super Resolution Network for Dems";
+    let score = levenshtein_similarity(s1, s2.to_lowercase().as_str());
+    println!("|{}|{:.3}|", s2, score);
 }
