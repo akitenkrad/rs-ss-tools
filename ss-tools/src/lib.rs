@@ -6,9 +6,9 @@
 //! | --- |:---:|:---:|
 //! | [Suggest paper query completions](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_autocomplete) | - | |
 //! | [Get details for multiple papers at once](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/post_graph_get_papers)| - | |
-//! | [Paper relevance search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_relevance_search) | ✅ | [`SemanticScholar::query_paper_id`] |
-//! | [Paper bulk search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_bulk_search) | ✅  | [`SemanticScholar::query_paper_batch`] |
-//! | [Paper title search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_title_search) | ✅ |[`SemanticScholar::query_paper_id`] |
+//! | [Paper relevance search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_relevance_search) | ✅ | [`SemanticScholar::query_papers_by_title`] |
+//! | [Paper bulk search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_bulk_search) | ✅  | [`SemanticScholar::bulk_query_by_ids`] |
+//! | [Paper title search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_title_search) | ✅ |[`SemanticScholar::query_a_paper_by_title`] |
 //! | [Details about a paper](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper) | ✅ | [`SemanticScholar::query_paper_details`] |
 //! | [Details about a paper's authors](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_authors) | - | |
 //! | [Details about a paper's citations](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_citations) | ✅ | [`SemanticScholar::query_paper_citations`] |
@@ -18,322 +18,192 @@
 //! | [Details about an author](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author) | - | |
 //! | [Details about an author's papers](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_papers) | - | |
 
+pub mod structs;
+
+use crate::structs::*;
 use anyhow::{Error, Result};
 use dotenvy::dotenv;
 use fxhash::FxHashMap;
 use indicatif::ProgressBar;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC as NON_ALNUM};
 use reqwest::{self as request, header};
-use serde::{Deserialize, Serialize};
-
-type SsScore = f64;
-type LevSimilarityScore = f64;
 
 #[cfg(test)]
 mod tests;
-pub mod utils;
 
 fn encode(s: &str) -> String {
     utf8_percent_encode(s, NON_ALNUM).to_string()
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
-pub enum SsEndpoint {
-    #[default]
-    PostPaperBatch,
-    GetPaperTitle,
-    GetPaperDetails,
-    GetAuthorDetails,
-    GetReferencesOfAPaper(String),
-    GetCitationsOfAPaper(String),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum SsAuthorField {
-    AuthorId,
-    Name,
-    Url,
-    Affiliations,
-    Homepage,
-    PaperCount,
-    CitationCount,
-    HIndex,
-}
-
-impl SsAuthorField {
-    pub fn to_string(&self) -> String {
-        match self {
-            SsAuthorField::AuthorId => "authorId".to_string(),
-            SsAuthorField::Name => "name".to_string(),
-            SsAuthorField::Url => "url".to_string(),
-            SsAuthorField::Affiliations => "affiliations".to_string(),
-            SsAuthorField::Homepage => "homepage".to_string(),
-            SsAuthorField::PaperCount => "paperCount".to_string(),
-            SsAuthorField::CitationCount => "citationCount".to_string(),
-            SsAuthorField::HIndex => "hIndex".to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum SsField {
-    PaperId,
-    Corpusid,
-    Url,
-    Title,
-    Abstract,
-    Venue,
-    PublicationVenue,
-    Year,
-    ReferenceCount,
-    CitationCount,
-    InfluentialCitationCount,
-    IsOpenAccess,
-    OpenAccessPdf,
-    FieldsOfStudy,
-    S2FieldsOfStudy,
-    PublicationTypes,
-    PublicationDate,
-    Journal,
-    CitationStyles,
-    Authors(Vec<SsAuthorField>),
-    Citations(Vec<SsField>),
-    References(Vec<SsField>),
-    Embedding,
-    Contexts,
-    Intents,
-    IsInfluential,
-    ContextsWithIntent,
-}
-
-impl SsField {
-    pub fn to_string(&self) -> String {
-        match self {
-            SsField::PaperId => "paperId".to_string(),
-            SsField::Corpusid => "corpusId".to_string(),
-            SsField::Url => "url".to_string(),
-            SsField::Title => "title".to_string(),
-            SsField::Abstract => "abstract".to_string(),
-            SsField::Venue => "venue".to_string(),
-            SsField::PublicationVenue => "publicationVenue".to_string(),
-            SsField::Year => "year".to_string(),
-            SsField::ReferenceCount => "referenceCount".to_string(),
-            SsField::CitationCount => "citationCount".to_string(),
-            SsField::InfluentialCitationCount => "influentialCitationCount".to_string(),
-            SsField::IsOpenAccess => "isOpenAccess".to_string(),
-            SsField::OpenAccessPdf => "openAccessPdf".to_string(),
-            SsField::FieldsOfStudy => "fieldsOfStudy".to_string(),
-            SsField::S2FieldsOfStudy => "s2FieldsOfStudy".to_string(),
-            SsField::PublicationTypes => "publicationTypes".to_string(),
-            SsField::PublicationDate => "publicationDate".to_string(),
-            SsField::Journal => "journal".to_string(),
-            SsField::CitationStyles => "citationStyles".to_string(),
-            SsField::Authors(fields) => {
-                let fields = fields
-                    .iter()
-                    .map(|field| format!("authors.{}", field.to_string()))
-                    .collect::<Vec<String>>()
-                    .join(",");
-                return fields;
-            }
-            SsField::Citations(fields) => {
-                let fields = fields
-                    .iter()
-                    .map(|field| format!("citations.{}", field.to_string()))
-                    .collect::<Vec<String>>()
-                    .join(",");
-                return fields;
-            }
-            SsField::References(fields) => {
-                let fields = fields
-                    .iter()
-                    .map(|field| format!("references.{}", field.to_string()))
-                    .collect::<Vec<String>>()
-                    .join(",");
-                return fields;
-            }
-            SsField::Embedding => "embedding.specter_v2".to_string(),
-            SsField::Contexts => "contexts".to_string(),
-            SsField::Intents => "intents".to_string(),
-            SsField::IsInfluential => "isInfluential".to_string(),
-            SsField::ContextsWithIntent => "contextsWithIntent".to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SsResponsePublicationVenue {
-    pub id: String,
-    #[serde(default = "default_value")]
-    pub name: Option<String>,
-    #[serde(rename = "type", default = "default_value")]
-    pub type_name: Option<String>,
-    #[serde(default = "default_value")]
-    pub url: Option<String>,
-    #[serde(default = "default_value")]
-    pub alternate_names: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SsResponseOpenAccessPdf {
-    #[serde(default = "default_value")]
-    pub url: Option<String>,
-    #[serde(default = "default_value")]
-    pub status: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SsResponseS2FieldsOfStudy {
-    #[serde(default = "default_value")]
-    pub category: Option<String>,
-    #[serde(default = "default_value")]
-    pub source: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SsResponseJournal {
-    #[serde(default = "default_value")]
-    volume: Option<String>,
-    #[serde(default = "default_value")]
-    pages: Option<String>,
-    #[serde(default = "default_value")]
-    name: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SsResponseCitationStyles {
-    #[serde(default = "default_value")]
-    bibtex: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SsResponseAuthor {
-    #[serde(rename = "authorId")]
-    pub author_id: String,
-    #[serde(default = "default_value")]
-    pub url: Option<String>,
-    #[serde(default = "default_value")]
-    pub name: Option<String>,
-    #[serde(default = "default_value")]
-    pub affiliations: Option<Vec<String>>,
-    #[serde(default = "default_value")]
-    pub homepage: Option<String>,
-    #[serde(rename = "paperCount", default = "default_value")]
-    pub paper_count: Option<u32>,
-    #[serde(rename = "citationCount", default = "default_value")]
-    pub citation_count: Option<u32>,
-    #[serde(rename = "hIndex", default = "default_value")]
-    pub hindex: Option<u32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SsResponseEmbedding {
-    pub model: String,
-    pub vector: Vec<f64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SsPaper {
-    #[serde(rename = "paperId", default = "default_value")]
-    pub paper_id: Option<String>,
-    #[serde(rename = "corpusId", default = "default_value")]
-    pub corpus_id: Option<u32>,
-    #[serde(default = "default_value")]
-    pub url: Option<String>,
-    #[serde(default = "default_value")]
-    pub title: Option<String>,
-    #[serde(rename = "abstract", default = "default_value")]
-    pub abstract_text: Option<String>,
-    #[serde(default = "default_value")]
-    pub venue: Option<String>,
-    #[serde(rename = "publicationVenue", default = "default_value")]
-    pub publication_venue: Option<SsResponsePublicationVenue>,
-    #[serde(default = "default_value")]
-    pub year: Option<u32>,
-    #[serde(rename = "referenceCount", default = "default_value")]
-    pub reference_count: Option<u32>,
-    #[serde(rename = "citationCount", default = "default_value")]
-    pub citation_count: Option<u32>,
-    #[serde(rename = "influentialCitationCount", default = "default_value")]
-    pub influential_citation_count: Option<u32>,
-    #[serde(rename = "isOpenAccess", default = "default_value")]
-    pub is_open_access: Option<bool>,
-    #[serde(rename = "openAccessPdf", default = "default_value")]
-    pub open_access_pdf: Option<SsResponseOpenAccessPdf>,
-    #[serde(rename = "fieldsOfStudy", default = "default_value")]
-    pub fields_of_study: Option<Vec<String>>,
-    #[serde(rename = "s2FieldsOfStudy", default = "default_value")]
-    pub s2_fields_of_study: Option<Vec<SsResponseS2FieldsOfStudy>>,
-    #[serde(rename = "publicationTypes", default = "default_value")]
-    pub publication_types: Option<Vec<String>>,
-    #[serde(rename = "publicationDate", default = "default_value")]
-    pub publication_date: Option<String>,
-    #[serde(default = "default_value")]
-    pub journal: Option<SsResponseJournal>,
-    #[serde(rename = "citationStyles", default = "default_value")]
-    pub citation_styles: Option<SsResponseCitationStyles>,
-    #[serde(default = "default_value")]
-    pub authors: Option<Vec<SsResponseAuthor>>,
-    #[serde(default = "default_value")]
-    pub citations: Option<Vec<SsPaper>>,
-    #[serde(default = "default_value")]
-    pub references: Option<Vec<SsPaper>>,
-    #[serde(default = "default_value")]
-    pub embedding: Option<SsResponseEmbedding>,
-    #[serde(rename = "matchScore", default = "default_value")]
-    pub match_score: Option<f64>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SsResponsePpaerIds {
-    pub data: Vec<SsPaper>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SsResponsePaperContext {
-    #[serde(default = "default_value")]
-    pub context: Option<String>,
-    #[serde(default = "default_value")]
-    pub intents: Option<Vec<String>>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SsResponseData {
-    #[serde(default = "default_value")]
-    pub contexts: Option<Vec<String>>,
-    #[serde(default = "default_value")]
-    pub intents: Option<Vec<String>>,
-    #[serde(rename = "contextsWithIntent", default = "default_value")]
-    pub contexts_with_intent: Option<Vec<SsResponsePaperContext>>,
-    #[serde(default = "default_value")]
-    pub isinfluential: Option<bool>,
-    #[serde(rename = "citingPaper", default = "default_value")]
-    pub citing_paper: Option<SsPaper>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SsResponsePapers {
-    #[serde(default = "default_value")]
+#[derive(Clone, Debug, Default)]
+pub struct QueryParams {
+    pub paper_id: String,
+    pub query_text: Option<String>,
+    pub fields: Option<Vec<PaperField>>,
+    pub publication_types: Option<Vec<PublicationTypes>>,
+    pub open_access_pdf: Option<bool>,
+    pub min_citation_count: Option<u32>,
+    pub publication_date_or_year: Option<String>,
+    pub year: Option<String>,
+    pub venue: Option<Vec<String>>,
+    pub fields_of_study: Option<Vec<FieldsOfStudy>>,
     pub offset: Option<u64>,
-    #[serde(default = "default_value")]
-    pub next: Option<u64>,
-    pub data: Vec<SsResponseData>,
+    pub limit: Option<u64>,
+    pub token: Option<String>,
+    pub sort: Option<String>,
 }
 
-fn default_value<T>() -> Option<T> {
-    None
+impl QueryParams {
+    pub fn paper_id(&mut self, paper_id: &str) -> &mut Self {
+        self.paper_id = paper_id.to_string();
+        self
+    }
+    pub fn query_text(&mut self, query_text: &str) -> &mut Self {
+        self.query_text = Some(query_text.to_string());
+        self
+    }
+    pub fn fields(&mut self, fields: Vec<PaperField>) -> &mut Self {
+        self.fields = Some(fields);
+        self
+    }
+    pub fn publication_types(&mut self, publication_types: Vec<PublicationTypes>) -> &mut Self {
+        self.publication_types = Some(publication_types);
+        self
+    }
+    pub fn open_access_pdf(&mut self, open_access_pdf: bool) -> &mut Self {
+        self.open_access_pdf = Some(open_access_pdf);
+        self
+    }
+    pub fn min_citation_count(&mut self, min_citation_count: u32) -> &mut Self {
+        self.min_citation_count = Some(min_citation_count);
+        self
+    }
+    pub fn publication_date_or_year(&mut self, publication_date_or_year: &str) -> &mut Self {
+        self.publication_date_or_year = Some(publication_date_or_year.to_string());
+        self
+    }
+    pub fn year(&mut self, year: &str) -> &mut Self {
+        self.year = Some(year.to_string());
+        self
+    }
+    pub fn venue(&mut self, venue: Vec<&str>) -> &mut Self {
+        let venue: Vec<String> = venue.iter().map(|v| v.to_string()).collect();
+        self.venue = Some(venue);
+        self
+    }
+    pub fn fields_of_study(&mut self, fields_of_study: Vec<FieldsOfStudy>) -> &mut Self {
+        self.fields_of_study = Some(fields_of_study);
+        self
+    }
+    pub fn offset(&mut self, offset: u64) -> &mut Self {
+        self.offset = Some(offset);
+        self
+    }
+    pub fn limit(&mut self, limit: u64) -> &mut Self {
+        self.limit = Some(limit);
+        self
+    }
+    pub fn token(&mut self, token: &str) -> &mut Self {
+        self.token = Some(token.to_string());
+        self
+    }
+    pub fn sort(&mut self, sort: &str) -> &mut Self {
+        self.sort = Some(sort.to_string());
+        self
+    }
+
+    fn fields2string(&self, fields: Vec<PaperField>) -> String {
+        fields
+            .iter()
+            .map(|field| encode(&field.to_string()))
+            .collect::<Vec<String>>()
+            .join(",")
+    }
+
+    fn publication_types2string(&self, publication_types: Vec<PublicationTypes>) -> String {
+        publication_types
+            .iter()
+            .map(|publication_type| encode(&publication_type.to_string()))
+            .collect::<Vec<String>>()
+            .join(",")
+    }
+
+    fn fields_of_study2string(&self, fields_of_study: Vec<FieldsOfStudy>) -> String {
+        fields_of_study
+            .iter()
+            .map(|field| encode(&field.to_string()))
+            .collect::<Vec<String>>()
+            .join(",")
+    }
+
+    pub fn build(&self) -> String {
+        let mut query_params = Vec::new();
+
+        if let Some(query_text) = &self.query_text {
+            query_params.push(format!("query={}", encode(query_text)));
+        }
+        if let Some(fields) = &self.fields {
+            let fields = self.fields2string(fields.clone());
+            query_params.push(format!("fields={}", fields));
+        }
+        if let Some(publication_types) = &self.publication_types {
+            let publication_types = self.publication_types2string(publication_types.clone());
+            query_params.push(format!("publicationTypes={}", publication_types));
+        }
+        if self.open_access_pdf.is_some() {
+            query_params.push("openAccessPdf".to_string());
+        }
+        if let Some(min_citation_count) = &self.min_citation_count {
+            query_params.push(format!("minCitationCount={}", min_citation_count));
+        }
+        if let Some(publication_date_or_year) = &self.publication_date_or_year {
+            query_params.push(format!(
+                "publicationDateOrYear={}",
+                publication_date_or_year
+            ));
+        }
+        if let Some(year) = &self.year {
+            query_params.push(format!("year={}", year));
+        }
+        if let Some(venue) = &self.venue {
+            let venue = venue
+                .iter()
+                .map(|v| encode(v))
+                .collect::<Vec<String>>()
+                .join(",");
+            query_params.push(format!("venue={}", venue));
+        }
+        if let Some(fields_of_study) = &self.fields_of_study {
+            let fields_of_study = self.fields_of_study2string(fields_of_study.clone());
+            query_params.push(format!("fieldsOfStudy={}", fields_of_study));
+        }
+        if let Some(offset) = &self.offset {
+            query_params.push(format!("offset={}", offset));
+        }
+        if let Some(limit) = &self.limit {
+            query_params.push(format!("limit={}", limit));
+        }
+        if let Some(token) = &self.token {
+            query_params.push(format!("token={}", token));
+        }
+        if let Some(sort) = &self.sort {
+            query_params.push(format!("sort={}", sort));
+        }
+
+        if query_params.is_empty() {
+            return "".to_string();
+        } else {
+            let query_params = query_params.join("&");
+            return format!("?{}", query_params);
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct SemanticScholar {
     pub api_key: String,
-    pub base_url: String,
-    pub endpoint: SsEndpoint,
-    pub query_text: String,
-    pub fields: Vec<SsField>,
 }
 
-// TODO: Add offset and limit parameters
 impl SemanticScholar {
     pub fn new() -> Self {
         dotenv().ok();
@@ -342,91 +212,65 @@ impl SemanticScholar {
             .get("SEMANTIC_SCHOLAR_API_KEY")
             .unwrap_or(&"".to_string())
             .to_string();
-        Self {
-            api_key: api_key,
-            base_url: "https://api.semanticscholar.org/graph/v1/".to_string(),
-            endpoint: SsEndpoint::GetPaperTitle,
-            query_text: "".to_string(),
-            fields: vec![],
-        }
+        Self { api_key: api_key }
     }
 
-    fn build(&self) -> String {
-        match &self.endpoint {
-            SsEndpoint::PostPaperBatch => {
-                if self.fields.is_empty() {
-                    return format!("{}paper/batch", self.base_url);
-                } else {
-                    let fields = self
-                        .fields
-                        .iter()
-                        .map(|field| field.to_string())
-                        .collect::<Vec<String>>()
-                        .join(",");
-                    return format!("{}paper/batch?fields={}", self.base_url, fields);
-                }
+    fn get_url(&self, endpoint: Endpoint, query_params: &mut QueryParams) -> String {
+        let paper_id = query_params.paper_id.clone();
+        let query_params = query_params.build();
+        match endpoint {
+            Endpoint::GetMultiplePpaerDetails => {
+                return format!(
+                    "https://api.semanticscholar.org/graph/v1/paper/batch{}",
+                    query_params
+                );
             }
-            SsEndpoint::GetPaperTitle => {
-                let query_text = encode(&self.query_text);
-                let url = format!("{}paper/search?query={}", self.base_url, query_text);
-                return url;
-            }
-            SsEndpoint::GetPaperDetails => {
-                let fields = self
-                    .fields
-                    .iter()
-                    .map(|field| field.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",");
+            Endpoint::GetAPaperByTitle => {
                 let url = format!(
-                    "{}paper/{}?fields={}",
-                    self.base_url, self.query_text, fields
+                    "https://api.semanticscholar.org/graph/v1/paper/search/match{}",
+                    query_params
                 );
                 return url;
             }
-            SsEndpoint::GetAuthorDetails => {
-                let fields = self
-                    .fields
-                    .iter()
-                    .map(|field| field.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",");
+            Endpoint::GetPapersByTitle => {
                 let url = format!(
-                    "{}author/{}?fields={}",
-                    self.base_url, self.query_text, fields
+                    "https://api.semanticscholar.org/graph/v1/paper/search{}",
+                    query_params
                 );
                 return url;
             }
-            SsEndpoint::GetReferencesOfAPaper(paper_id) => {
-                let fields = self
-                    .fields
-                    .iter()
-                    .map(|field| field.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",");
+            Endpoint::GetPaperDetails => {
                 let url = format!(
-                    "{}paper/{}/references?fields={}",
-                    self.base_url, paper_id, fields
+                    "https://api.semanticscholar.org/graph/v1/paper/{}{}",
+                    paper_id, query_params
                 );
                 return url;
             }
-            SsEndpoint::GetCitationsOfAPaper(paper_id) => {
-                let fields = self
-                    .fields
-                    .iter()
-                    .map(|field| field.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",");
+            Endpoint::GetAuthorDetails => {
                 let url = format!(
-                    "{}paper/{}/citations?fields={}",
-                    self.base_url, paper_id, fields
+                    "https://api.semanticscholar.org/graph/v1/author/{}{}",
+                    paper_id, query_params
+                );
+                return url;
+            }
+            Endpoint::GetReferencesOfAPaper => {
+                let url = format!(
+                    "https://api.semanticscholar.org/graph/v1/paper/{}/references{}",
+                    paper_id, query_params
+                );
+                return url;
+            }
+            Endpoint::GetCitationsOfAPaper => {
+                let url = format!(
+                    "https://api.semanticscholar.org/graph/v1/paper/{}/citations{}",
+                    paper_id, query_params
                 );
                 return url;
             }
         }
     }
 
-    fn sleep(&self, seconds: u64) {
+    fn sleep(&self, seconds: u64, message: &str) {
         let pb = ProgressBar::new(seconds);
         pb.set_style(
             indicatif::ProgressStyle::default_bar()
@@ -436,7 +280,11 @@ impl SemanticScholar {
                 .unwrap()
                 .progress_chars("█▓▒░"),
         );
-        pb.set_message("Waiting for the next request...");
+        if message.is_empty() {
+            pb.set_message("Waiting for the next request...");
+        } else {
+            pb.set_message(message.to_string());
+        }
         for _ in 0..seconds {
             pb.inc(1);
             std::thread::sleep(std::time::Duration::from_secs(1));
@@ -444,15 +292,47 @@ impl SemanticScholar {
         pb.finish_and_clear();
     }
 
-    pub async fn query_paper_batch(
+    /// # Description
+    /// Bulk retrieval of basic paper data without search relevance.  
+    /// Available fields for `fields: Vec<PaperField>`, see: [`PaperField`].  
+    /// See for more details: [Paper bulk search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_bulk_search)  
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use anyhow::Result;
+    /// # use ss_tools::SemanticScholar;
+    /// # use ss_tools::structs::PaperField;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// let paper_ids = vec![
+    ///     "5c5751d45e298cea054f32b392c12c61027d2fe7",
+    ///     "649def34f8be52c8b66281af98ae884c09aef38b",
+    ///     "ARXIV:2106.15928",
+    /// ];
+    /// let fields = vec![
+    ///     PaperField::Title,
+    ///     PaperField::CitationCount,
+    /// ];
+    /// let max_retry_count = 5;
+    /// let wait_time = 10;
+    /// let mut ss = SemanticScholar::new();
+    /// let papers = ss.bulk_query_by_ids(paper_ids, fields, max_retry_count, wait_time).await.unwrap();
+    ///
+    /// assert_eq!(papers.len(), 3);
+    /// let paper = &papers[0].clone();
+    /// assert_eq!(paper.title.clone().unwrap(), "S2ORC: The Semantic Scholar Open Research Corpus");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn bulk_query_by_ids(
         &mut self,
         paper_ids: Vec<&str>,
-        fields: Vec<SsField>,
-        max_retry_count: &mut u64,
+        fields: Vec<PaperField>,
+        max_retry_count: u64,
         wait_time: u64,
-    ) -> Result<Vec<SsPaper>> {
-        self.fields = fields.clone();
-        self.endpoint = SsEndpoint::PostPaperBatch;
+    ) -> Result<Vec<Paper>> {
+        let mut max_retry_count = max_retry_count.clone();
 
         let mut headers = header::HeaderMap::new();
         headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -464,7 +344,9 @@ impl SemanticScholar {
             .build()
             .unwrap();
 
-        let url = self.build();
+        let mut query_params = QueryParams::default();
+        query_params.fields(fields.clone());
+        let url = self.get_url(Endpoint::GetMultiplePpaerDetails, &mut query_params);
         let body = format!(
             "{{\"ids\":[{}]}}",
             paper_ids
@@ -475,7 +357,7 @@ impl SemanticScholar {
         );
 
         loop {
-            if *max_retry_count == 0 {
+            if max_retry_count == 0 {
                 return Err(Error::msg("Failed to get papers"));
             }
             let body = client
@@ -487,27 +369,56 @@ impl SemanticScholar {
                 .text()
                 .await
                 .unwrap();
-            match serde_json::from_str::<Vec<SsPaper>>(&body) {
+            match serde_json::from_str::<Vec<Paper>>(&body) {
                 Ok(response) => {
                     return Ok(response);
                 }
-                Err(_) => {
-                    *max_retry_count -= 1;
-                    self.sleep(wait_time);
+                Err(e) => {
+                    max_retry_count -= 1;
+                    self.sleep(wait_time, &e.to_string());
                     continue;
                 }
             }
         }
     }
 
-    pub async fn query_paper_id(
+    /// # Description
+    /// Search for papers related to the given title.  
+    /// Make sure to provide the `query_text` in the `query_params`.  
+    /// For details of 'query_params', see: [`QueryParams`].  
+    ///
+    /// # Example
+    /// ```rust
+    /// # use anyhow::Result;
+    /// # use ss_tools::{SemanticScholar, QueryParams};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// let mut ss = SemanticScholar::new();
+    /// let mut query_params = QueryParams::default();
+    /// query_params.query_text("attention is all you need");
+    /// let max_retry_count = 5;
+    /// let wait_time = 10;
+    ///
+    /// let papers = ss.query_papers_by_title(query_params, max_retry_count, wait_time).await.unwrap();
+    ///
+    /// assert!(papers.len() > 1);
+    /// let paper = papers.first().unwrap();
+    /// assert_eq!(paper.paper_id.clone().unwrap(), "204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+    /// assert_eq!(
+    ///    paper.title.clone().unwrap().to_lowercase(),
+    ///   "attention is all you need".to_string()
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn query_papers_by_title(
         &mut self,
-        query_text: String,
-        max_retry_count: &mut u64,
+        query_params: QueryParams,
+        max_retry_count: u64,
         wait_time: u64,
-    ) -> Result<(String, String)> {
-        self.query_text = query_text;
-        self.endpoint = SsEndpoint::GetPaperTitle;
+    ) -> Result<Vec<Paper>> {
+        let mut query_params = query_params.clone();
+        let mut max_retry_count = max_retry_count.clone();
 
         let mut headers = header::HeaderMap::new();
         if !self.api_key.is_empty() {
@@ -518,15 +429,12 @@ impl SemanticScholar {
             .build()
             .unwrap();
 
-        let url = self.build();
-
-        println!("URL: {}", url);
-
+        let url = self.get_url(Endpoint::GetPapersByTitle, &mut query_params);
         loop {
-            if *max_retry_count == 0 {
+            if max_retry_count == 0 {
                 return Err(Error::msg(format!(
                     "Failed to get paper id for: {}",
-                    self.query_text
+                    query_params.query_text.unwrap().clone()
                 )));
             }
 
@@ -538,63 +446,146 @@ impl SemanticScholar {
                 .text()
                 .await
                 .unwrap();
-            match serde_json::from_str::<SsResponsePpaerIds>(&body) {
+            match serde_json::from_str::<PaperIds>(&body) {
                 Ok(response) => {
-                    if response.data.is_empty() {
-                        *max_retry_count -= 1;
-                        self.sleep(wait_time);
-                        continue;
+                    if response.data.is_empty() || response.total == 0 {
+                        return Err(Error::msg("Paper not found"));
                     }
-                    let mut scores: Vec<(SsScore, LevSimilarityScore, (String, String))> =
-                        Vec::new();
-                    response.data.iter().for_each(|paper| {
-                        let title = paper.title.clone().unwrap_or("".to_string());
-                        let score = paper.match_score.unwrap_or(0.0);
-                        let lev_score = utils::levenshtein_similarity(&self.query_text, &title);
-                        scores.push((
-                            score,
-                            lev_score,
-                            (
-                                paper.paper_id.clone().unwrap(),
-                                paper.title.clone().unwrap(),
-                            ),
-                        ));
-                    });
-                    let total_score = |ss_s, lev_s| 0.5 * ss_s + 0.5 * lev_s;
-                    let (paper_id, paper_title) = scores
-                        .iter()
-                        .max_by(|a, b| {
-                            total_score(a.0, a.1)
-                                .partial_cmp(&total_score(b.0, b.1))
-                                .unwrap()
-                        })
-                        .unwrap()
-                        .2
-                        .clone();
-                    return Ok((paper_id, paper_title));
+                    return Ok(response.data);
                 }
-                Err(_) => {
-                    *max_retry_count -= 1;
-                    self.sleep(wait_time);
+                Err(e) => {
+                    max_retry_count -= 1;
+                    self.sleep(wait_time, &e.to_string());
                     continue;
                 }
             }
         }
     }
 
+    /// # Description
+    /// Retrieve a single paper based on closest match to the title.
+    /// For details of 'query_params', see: [`QueryParams`].
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use anyhow::Result;
+    /// # use ss_tools::{SemanticScholar, QueryParams};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// let mut ss = SemanticScholar::new();
+    /// let mut query_params = QueryParams::default();
+    /// query_params.query_text("attention is all you need");
+    /// let max_retry_count = 5;
+    /// let wait_time = 10;
+    /// let paper = ss
+    ///     .query_a_paper_by_title(query_params, max_retry_count, wait_time)
+    ///     .await
+    ///     .unwrap();
+    /// assert_eq!(paper.paper_id.clone().unwrap(), "204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+    /// assert_eq!(
+    ///     paper.title.clone().unwrap().to_lowercase(),
+    ///     "attention is all you need".to_string()
+    ///);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn query_a_paper_by_title(
+        &mut self,
+        query_params: QueryParams,
+        max_retry_count: u64,
+        wait_time: u64,
+    ) -> Result<Paper> {
+        let mut query_params = query_params.clone();
+        let mut max_retry_count = max_retry_count.clone();
+
+        let mut headers = header::HeaderMap::new();
+        if !self.api_key.is_empty() {
+            headers.insert("x-api-key", self.api_key.parse().unwrap());
+        }
+        let client = request::Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap();
+
+        let url = self.get_url(Endpoint::GetAPaperByTitle, &mut query_params);
+        loop {
+            if max_retry_count == 0 {
+                return Err(Error::msg(format!(
+                    "Failed to get paper id for: {}",
+                    query_params.query_text.unwrap()
+                )));
+            }
+
+            let body = client
+                .get(url.clone())
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+            match serde_json::from_str::<PaperIds>(&body) {
+                Ok(response) => {
+                    if response.data.len() < 1 {
+                        max_retry_count -= 1;
+                        self.sleep(wait_time, "Response is empty");
+                        continue;
+                    }
+                    let paper = response.data.first().unwrap().clone();
+                    return Ok(paper);
+                }
+                Err(e) => {
+                    max_retry_count -= 1;
+                    self.sleep(wait_time, &e.to_string());
+                    continue;
+                }
+            }
+        }
+    }
+
+    /// # Description
+    /// Retrieve details of a single paper based on the paper id.
+    /// Make sure to provide the `paper_id` in the `query_params`.
+    /// For details of 'query_params', see: [`QueryParams`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use anyhow::Result;
+    /// # use ss_tools::{SemanticScholar, QueryParams};
+    /// # use ss_tools::structs::PaperField;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// let mut ss = SemanticScholar::new();
+    /// let mut query_params = QueryParams::default();
+    /// query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+    /// query_params.fields(vec![
+    ///     PaperField::Title,
+    ///     PaperField::Abstract,
+    ///     PaperField::CitationCount,
+    ///     PaperField::ReferenceCount,
+    ///     PaperField::Year,
+    /// ]);
+    /// let paper_details = ss.query_paper_details(query_params, 5, 10).await.unwrap();
+    ///
+    /// let title = paper_details.title.clone().unwrap();
+    /// assert_eq!(title.to_lowercase(), "attention is all you need".to_string());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn query_paper_details(
         &mut self,
-        paper_id: String,
-        fields: Vec<SsField>,
-        max_retry_count: &mut u64,
+        query_params: QueryParams,
+        max_retry_count: u64,
         wait_time: u64,
-    ) -> Result<SsPaper> {
-        self.query_text = paper_id.clone();
-        self.fields = fields.clone();
-        self.endpoint = SsEndpoint::GetPaperDetails;
+    ) -> Result<Paper> {
+        let mut query_params = query_params.clone();
+        let mut max_retry_count = max_retry_count.clone();
 
-        if !fields.contains(&SsField::PaperId) {
-            self.fields.push(SsField::PaperId);
+        let mut fields = query_params.fields.clone().unwrap_or_default();
+        if !fields.contains(&PaperField::PaperId) {
+            fields.push(PaperField::PaperId);
+            query_params.fields = Some(fields);
         }
 
         let mut headers = header::HeaderMap::new();
@@ -606,13 +597,12 @@ impl SemanticScholar {
             .build()
             .unwrap();
 
-        let url = self.build();
-
+        let url = self.get_url(Endpoint::GetPaperDetails, &mut query_params);
         loop {
-            if *max_retry_count == 0 {
+            if max_retry_count == 0 {
                 return Err(Error::msg(format!(
                     "Failed to get paper details: {}",
-                    paper_id
+                    query_params.paper_id
                 )));
             }
             let body = client
@@ -623,13 +613,13 @@ impl SemanticScholar {
                 .text()
                 .await
                 .unwrap();
-            match serde_json::from_str::<SsPaper>(&body) {
+            match serde_json::from_str::<Paper>(&body) {
                 Ok(response) => {
                     return Ok(response);
                 }
-                Err(_) => {
-                    *max_retry_count -= 1;
-                    self.sleep(wait_time);
+                Err(e) => {
+                    max_retry_count -= 1;
+                    self.sleep(wait_time, &e.to_string());
                     continue;
                 }
             }
@@ -638,17 +628,17 @@ impl SemanticScholar {
 
     pub async fn query_paper_citations(
         &mut self,
-        paper_id: String,
-        fields: Vec<SsField>,
-        max_retry_count: &mut u64,
+        query_params: QueryParams,
+        max_retry_count: u64,
         wait_time: u64,
-    ) -> Result<SsResponsePapers> {
-        self.query_text = paper_id.clone();
-        self.fields = fields.clone();
-        self.endpoint = SsEndpoint::GetCitationsOfAPaper(paper_id.clone());
+    ) -> Result<ResponsePapers> {
+        let mut query_params = query_params.clone();
+        let mut max_retry_count = max_retry_count.clone();
 
-        if !fields.contains(&SsField::PaperId) {
-            self.fields.push(SsField::PaperId);
+        let mut fields = query_params.fields.clone().unwrap_or_default();
+        if !fields.contains(&PaperField::PaperId) {
+            fields.push(PaperField::PaperId);
+            query_params.fields = Some(fields);
         }
 
         let mut headers = header::HeaderMap::new();
@@ -660,34 +650,32 @@ impl SemanticScholar {
             .build()
             .unwrap();
 
-        let url = self.build();
+        let url = self.get_url(Endpoint::GetCitationsOfAPaper, &mut query_params);
 
         loop {
-            if *max_retry_count == 0 {
+            if max_retry_count == 0 {
                 return Err(Error::msg(format!(
                     "Failed to get paper citations: {}",
-                    paper_id
+                    query_params.paper_id
                 )));
             }
             match client.get(url.clone()).send().await {
                 Ok(response) => {
                     let body = response.text().await.unwrap();
-                    match serde_json::from_str::<SsResponsePapers>(&body) {
+                    match serde_json::from_str::<ResponsePapers>(&body) {
                         Ok(response) => {
                             return Ok(response);
                         }
                         Err(e) => {
-                            *max_retry_count -= 1;
-                            println!("{:?}", e);
-                            self.sleep(wait_time);
+                            max_retry_count -= 1;
+                            self.sleep(wait_time, &e.to_string());
                             continue;
                         }
                     }
                 }
                 Err(e) => {
-                    *max_retry_count -= 1;
-                    println!("{:?}", e);
-                    self.sleep(wait_time);
+                    max_retry_count -= 1;
+                    self.sleep(wait_time, &e.to_string());
                     continue;
                 }
             }
@@ -696,17 +684,17 @@ impl SemanticScholar {
 
     pub async fn query_paper_references(
         &mut self,
-        paper_id: String,
-        fields: Vec<SsField>,
-        max_retry_count: &mut u64,
+        query_params: QueryParams,
+        max_retry_count: u64,
         wait_time: u64,
-    ) -> Result<SsResponsePapers> {
-        self.query_text = paper_id.clone();
-        self.fields = fields.clone();
-        self.endpoint = SsEndpoint::GetReferencesOfAPaper(paper_id.clone());
+    ) -> Result<ResponsePapers> {
+        let mut query_params = query_params.clone();
+        let mut max_retry_count = max_retry_count.clone();
 
-        if !fields.contains(&SsField::PaperId) {
-            self.fields.push(SsField::PaperId);
+        let mut fields = query_params.fields.clone().unwrap_or_default();
+        if !fields.contains(&PaperField::PaperId) {
+            fields.push(PaperField::PaperId);
+            query_params.fields = Some(fields);
         }
 
         let mut headers = header::HeaderMap::new();
@@ -718,32 +706,31 @@ impl SemanticScholar {
             .build()
             .unwrap();
 
-        let url = self.build();
-
+        let url = self.get_url(Endpoint::GetReferencesOfAPaper, &mut query_params);
         loop {
-            if *max_retry_count == 0 {
+            if max_retry_count == 0 {
                 return Err(Error::msg(format!(
                     "Failed to get paper references: {}",
-                    paper_id
+                    query_params.paper_id
                 )));
             }
             match client.get(url.clone()).send().await {
                 Ok(response) => {
                     let body = response.text().await.unwrap();
-                    match serde_json::from_str::<SsResponsePapers>(&body) {
+                    match serde_json::from_str::<ResponsePapers>(&body) {
                         Ok(response) => {
                             return Ok(response);
                         }
-                        Err(_) => {
-                            *max_retry_count -= 1;
-                            self.sleep(wait_time);
+                        Err(e) => {
+                            max_retry_count -= 1;
+                            self.sleep(wait_time, &e.to_string());
                             continue;
                         }
                     }
                 }
-                Err(_) => {
-                    *max_retry_count -= 1;
-                    self.sleep(wait_time);
+                Err(e) => {
+                    max_retry_count -= 1;
+                    self.sleep(wait_time, &e.to_string());
                     continue;
                 }
             }

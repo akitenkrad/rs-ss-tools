@@ -7,7 +7,7 @@ Tools for Semantic Scholar API.
 
 [Documents](https://crates.io/crates/ss-tools)
 
-<img src="../LOGO.png" alt="LOGO" width="150" height="150">
+<img src="LOGO.png" alt="LOGO" width="150" height="150">
 
 ## Quick Start
 
