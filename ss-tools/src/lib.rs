@@ -430,6 +430,7 @@ impl SemanticScholar {
             .unwrap();
 
         let url = self.get_url(Endpoint::GetPapersByTitle, &mut query_params);
+
         loop {
             if max_retry_count == 0 {
                 return Err(Error::msg(format!(
@@ -449,7 +450,9 @@ impl SemanticScholar {
             match serde_json::from_str::<PaperIds>(&body) {
                 Ok(response) => {
                     if response.data.is_empty() || response.total == 0 {
-                        return Err(Error::msg("Paper not found"));
+                        max_retry_count -= 1;
+                        self.sleep(wait_time, "Response is empty");
+                        continue;
                     }
                     return Ok(response.data);
                 }

@@ -40,6 +40,13 @@ See the documents -> [Documents](https://docs.rs/ss-tools/latest/ss_tools/index.
 ## Updates
 
 <details open>
+<summary>0.2.5</summary>
+
+- Fixed to retry when the api response is empty.
+
+</details>
+
+<details>
 <summary>0.2.4</summary>
 
 - Changed module names to make them more intuitive and easier to understand.
@@ -48,7 +55,7 @@ See the documents -> [Documents](https://docs.rs/ss-tools/latest/ss_tools/index.
 
 </details>
 
-<details open>
+<details>
 <summary>0.2.3</summary>
 
 - Added a new endpoint: [`Get details for multiple papers at once`](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/post_graph_get_papers)
@@ -56,7 +63,7 @@ See the documents -> [Documents](https://docs.rs/ss-tools/latest/ss_tools/index.
 
 </details>
 
-<details open>
+<details>
 <summary>0.2.2</summary>
 
 - Fixed README.md
@@ -64,14 +71,14 @@ See the documents -> [Documents](https://docs.rs/ss-tools/latest/ss_tools/index.
 
 </details>
 
-<details open>
+<details>
 <summary>0.2.1</summary>
 
 - Fixed README.md
 
 </details>
 
-<details open>
+<details>
 <summary>0.2.0</summary>
 
 - apply the Levenshtein algorithm to extract the correct title.

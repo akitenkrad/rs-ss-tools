@@ -1,6 +1,9 @@
 use super::*;
+use serial_test::serial;
 use std::include_str;
+
 #[test]
+#[serial]
 fn test_ss_response_deserialization() {
     let json = include_str!("test_rsc/sample.json");
     let response = serde_json::from_str::<Paper>(json).unwrap();
@@ -50,6 +53,7 @@ fn test_ss_response_deserialization() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_bulk_query_by_ids_without_fields() {
     let paper_ids = vec![
         "649def34f8be52c8b66281af98ae884c09aef38b",
@@ -74,6 +78,7 @@ async fn test_bulk_query_by_ids_without_fields() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_bulk_query_by_ids_with_fields() {
     let paper_ids = vec![
         "649def34f8be52c8b66281af98ae884c09aef38b",
@@ -103,6 +108,7 @@ async fn test_bulk_query_by_ids_with_fields() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_query_papers_1() {
     // Prepare
     let mut ss = SemanticScholar::new();
@@ -126,6 +132,7 @@ async fn test_query_papers_1() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_query_papers_2() {
     // Prepare
     let mut query_params = QueryParams::default();
@@ -149,6 +156,7 @@ async fn test_query_papers_2() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_query_papers_3() {
     // Prepare
     let mut ss = SemanticScholar::new();
@@ -178,6 +186,62 @@ async fn test_query_papers_3() {
 }
 
 #[tokio::test]
+#[serial]
+async fn test_query_papers_4() {
+    // Prepare
+    let mut ss = SemanticScholar::new();
+    let mut query_params = QueryParams::default();
+    query_params.query_text("Attention Is All You Need");
+    query_params.fields(vec![
+        PaperField::Title,
+        PaperField::Abstract,
+        PaperField::Authors(vec![
+            AuthorField::Name,
+            AuthorField::Affiliations,
+            AuthorField::HIndex,
+        ]),
+        PaperField::CitationCount,
+        PaperField::ReferenceCount,
+        PaperField::Year,
+        PaperField::IsOpenAccess,
+        PaperField::PublicationDate,
+        PaperField::Venue,
+        PaperField::FieldsOfStudy,
+        PaperField::Citations(vec![
+            PaperField::Title,
+            PaperField::Year,
+            PaperField::CitationCount,
+        ]),
+        PaperField::References(vec![
+            PaperField::Title,
+            PaperField::Year,
+            PaperField::CitationCount,
+        ]),
+        PaperField::Journal,
+        PaperField::PublicationVenue,
+        PaperField::OpenAccessPdf,
+        PaperField::S2FieldsOfStudy,
+        PaperField::PublicationTypes,
+        PaperField::CitationStyles,
+        PaperField::Embedding,
+    ]);
+
+    let max_retry_count = 5;
+    let wait_time = 10;
+    // Execute
+    let res = ss
+        .query_papers_by_title(query_params, max_retry_count, wait_time)
+        .await
+        .unwrap();
+
+    // Verify
+    assert!(res.len() > 1);
+    let paper = res.first().unwrap();
+    println!("{}", serde_json::to_string_pretty(&paper).unwrap());
+}
+
+#[tokio::test]
+#[serial]
 async fn test_a_query_paper_1() {
     // Prepare
     let mut ss = SemanticScholar::new();
@@ -203,6 +267,7 @@ async fn test_a_query_paper_1() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_query_paper_details() {
     // Prepare
     let mut ss = SemanticScholar::new();
@@ -259,6 +324,7 @@ async fn test_query_paper_details() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_query_paper_citations() {
     // Prepare
     let mut ss = SemanticScholar::new();
