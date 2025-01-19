@@ -273,8 +273,8 @@ pub struct CitationStyles {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Author {
-    #[serde(rename = "authorId", default = "String::new")]
-    pub author_id: String,
+    #[serde(rename = "authorId", default = "Option::default")]
+    pub author_id: Option<String>,
     #[serde(default = "Option::default")]
     pub url: Option<String>,
     #[serde(default = "Option::default")]

@@ -40,6 +40,13 @@ See the documents -> [Documents](https://docs.rs/ss-tools/latest/ss_tools/index.
 ## Updates
 
 <details open>
+<summary>0.2.6</summary>
+
+- Fixed to a bug: `Author.author_id: String` => `Author.author_id: Option<String>`
+
+</details>
+
+<details>
 <summary>0.2.5</summary>
 
 - Fixed to retry when the api response is empty.

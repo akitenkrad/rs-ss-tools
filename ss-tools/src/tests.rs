@@ -268,6 +268,123 @@ async fn test_a_query_paper_1() {
 
 #[tokio::test]
 #[serial]
+async fn test_a_query_paper_2() {
+    // Prepare
+    let mut ss = SemanticScholar::new();
+    let mut query_params = QueryParams::default();
+    query_params.query_text("Measuring Machine Intelligence Through Visual Question Answering");
+    query_params.fields(vec![
+        PaperField::PaperId,
+        PaperField::Title,
+        PaperField::Abstract,
+        PaperField::Authors(vec![
+            AuthorField::AuthorId,
+            AuthorField::Name,
+            AuthorField::Url,
+            AuthorField::Affiliations,
+        ]),
+        PaperField::Venue,
+        PaperField::PaperId,
+        PaperField::Url,
+        PaperField::ReferenceCount,
+        PaperField::CitationCount,
+        PaperField::InfluentialCitationCount,
+        PaperField::PublicationDate,
+        PaperField::Citations(vec![
+            PaperField::PaperId,
+            PaperField::Title,
+            PaperField::Abstract,
+            PaperField::PublicationDate,
+        ]),
+        PaperField::References(vec![
+            PaperField::PaperId,
+            PaperField::Title,
+            PaperField::Abstract,
+            PaperField::PublicationDate,
+        ]),
+    ]);
+    let max_retry_count = 5;
+    let wait_time = 10;
+    // Execute
+    let paper = ss
+        .query_a_paper_by_title(query_params, max_retry_count, wait_time)
+        .await
+        .unwrap();
+
+    println!("{:?}", paper.authors);
+
+    // Verify
+    assert_eq!(
+        paper.paper_id.clone().unwrap(),
+        "caf912b716905ccbf46d6d00d6a0b622834a7cd9"
+    );
+    assert_eq!(
+        paper.title.clone().unwrap().to_lowercase(),
+        "measuring machine intelligence through visual question answering".to_string()
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn test_a_query_paper_3() {
+    // Prepare
+    let mut ss = SemanticScholar::new();
+    let mut query_params = QueryParams::default();
+    query_params.query_text("Learning to generalize to new compositions in image understanding");
+    query_params.fields(vec![
+        PaperField::PaperId,
+        PaperField::Title,
+        PaperField::Abstract,
+        PaperField::Authors(vec![
+            AuthorField::AuthorId,
+            AuthorField::Name,
+            AuthorField::Url,
+            AuthorField::Affiliations,
+        ]),
+        PaperField::Venue,
+        PaperField::PaperId,
+        PaperField::Url,
+        PaperField::ReferenceCount,
+        PaperField::CitationCount,
+        PaperField::InfluentialCitationCount,
+        PaperField::PublicationDate,
+        PaperField::Citations(vec![
+            PaperField::PaperId,
+            PaperField::Title,
+            PaperField::Abstract,
+            PaperField::PublicationDate,
+        ]),
+        PaperField::References(vec![
+            PaperField::PaperId,
+            PaperField::Title,
+            PaperField::Abstract,
+            PaperField::PublicationDate,
+        ]),
+    ]);
+
+    let max_retry_count = 5;
+    let wait_time = 10;
+    // Execute
+    let paper = ss
+        .query_a_paper_by_title(query_params, max_retry_count, wait_time)
+        .await
+        .unwrap();
+
+    println!("{:?}", paper.authors);
+
+    // Verify
+    assert_eq!(
+        paper.paper_id.clone().unwrap(),
+        "936227f7483938097cc1cdd3032016df54dbd5b6"
+    );
+    assert_eq!(
+        paper.title.clone().unwrap().to_lowercase(),
+        "learning to generalize to new compositions in image understanding".to_string()
+    );
+}
+
+#[tokio::test]
+#[serial]
 async fn test_query_paper_details() {
     // Prepare
     let mut ss = SemanticScholar::new();
@@ -277,6 +394,7 @@ async fn test_query_paper_details() {
         PaperField::Title,
         PaperField::Abstract,
         PaperField::Authors(vec![
+            AuthorField::AuthorId,
             AuthorField::Name,
             AuthorField::Affiliations,
             AuthorField::HIndex,

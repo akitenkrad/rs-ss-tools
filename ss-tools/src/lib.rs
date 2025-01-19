@@ -1,6 +1,42 @@
 //! # Semantic Scholar Tools
 //! This library provides tools to interact with the Semantic Scholar API.
 //!
+//! ## Quick Start
+//!
+//! This is a simple example to get you started with `ss-tools`.  
+//! The following code snippet shows how to query a paper by its title:
+//!
+//! ```rust
+//! use anyhow::Result;
+//! use ss_tools::{SemanticScholar, QueryParams};
+//! # #[tokio::main]
+//! # async fn main() -> Result<()> {
+//!
+//! let query_text = "Attention Is All You Need";
+//!
+//! // Create a new instance of SemanticScholar
+//! let mut ss = SemanticScholar::new();
+//! let mut query_params = QueryParams::default();
+//! query_params.query_text(query_text);
+//!
+//! let max_retry_count = 5;
+//! let wait_time = 10;
+//! let paper = ss.query_a_paper_by_title(query_params, max_retry_count, wait_time).await.unwrap();
+//
+//! assert_eq!(
+//!    paper.title.clone().unwrap().to_lowercase(),
+//!   "attention is all you need".to_string()
+//! );
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Tutorials
+//! - Step 1 - [Hello `ss-tools`](tutorials::step_1)
+//! - Step 2 - [Paper & Author structs](tutorials::step_2)
+//! - Step 3 - [Build QueryParam](tutorials::step_3)
+//! - Step 4 - [Available Endpoints](tutorials::step_4)
+//!
 //! ## Implemented Endpoints
 //! | Endpoint | Implementation | Reference |
 //! | --- |:---:|:---:|
@@ -19,6 +55,7 @@
 //! | [Details about an author's papers](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_papers) | - | |
 
 pub mod structs;
+pub mod tutorials;
 
 use crate::structs::*;
 use anyhow::{Error, Result};
