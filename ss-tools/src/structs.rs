@@ -258,17 +258,17 @@ pub struct S2FieldsOfStudy {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Journal {
     #[serde(default = "Option::default")]
-    volume: Option<String>,
+    pub volume: Option<String>,
     #[serde(default = "Option::default")]
-    pages: Option<String>,
+    pub pages: Option<String>,
     #[serde(default = "Option::default")]
-    name: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CitationStyles {
     #[serde(default = "Option::default")]
-    bibtex: Option<String>,
+    pub bibtex: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

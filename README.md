@@ -151,6 +151,13 @@ COMMING SOON!
 ## Updates
 
 <details open>
+<summary>0.2.7</summary>
+
+- Changed visibility of structs' fields from `private` to `public`.
+
+</details>
+
+<details>
 <summary>0.2.6</summary>
 
 - Fixed to a bug: `Author.author_id: String` => `Author.author_id: Option<String>`

@@ -373,6 +373,7 @@ impl SemanticScholar {
 
         let mut headers = header::HeaderMap::new();
         headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
         if !self.api_key.is_empty() {
             headers.insert("x-api-key", self.api_key.parse().unwrap());
         }
@@ -401,18 +402,20 @@ impl SemanticScholar {
                 .post(url.clone())
                 .body(body.clone())
                 .send()
-                .await
-                .unwrap()
+                .await?
                 .text()
-                .await
-                .unwrap();
+                .await?;
+
             match serde_json::from_str::<Vec<Paper>>(&body) {
                 Ok(response) => {
                     return Ok(response);
                 }
                 Err(e) => {
                     max_retry_count -= 1;
-                    self.sleep(wait_time, &e.to_string());
+                    self.sleep(
+                        wait_time,
+                        format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                    );
                     continue;
                 }
             }
@@ -458,6 +461,8 @@ impl SemanticScholar {
         let mut max_retry_count = max_retry_count.clone();
 
         let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
         if !self.api_key.is_empty() {
             headers.insert("x-api-key", self.api_key.parse().unwrap());
         }
@@ -476,26 +481,25 @@ impl SemanticScholar {
                 )));
             }
 
-            let body = client
-                .get(url.clone())
-                .send()
-                .await
-                .unwrap()
-                .text()
-                .await
-                .unwrap();
+            let body = client.get(url.clone()).send().await?.text().await?;
             match serde_json::from_str::<PaperIds>(&body) {
                 Ok(response) => {
                     if response.data.is_empty() || response.total == 0 {
                         max_retry_count -= 1;
-                        self.sleep(wait_time, "Response is empty");
+                        self.sleep(
+                            wait_time,
+                            format!("Error: Response is empty. Body: {}", &body).as_str(),
+                        );
                         continue;
                     }
                     return Ok(response.data);
                 }
                 Err(e) => {
                     max_retry_count -= 1;
-                    self.sleep(wait_time, &e.to_string());
+                    self.sleep(
+                        wait_time,
+                        format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                    );
                     continue;
                 }
             }
@@ -540,13 +544,14 @@ impl SemanticScholar {
         let mut max_retry_count = max_retry_count.clone();
 
         let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
         if !self.api_key.is_empty() {
-            headers.insert("x-api-key", self.api_key.parse().unwrap());
+            headers.insert("x-api-key", self.api_key.parse()?);
         }
         let client = request::Client::builder()
             .default_headers(headers)
-            .build()
-            .unwrap();
+            .build()?;
 
         let url = self.get_url(Endpoint::GetAPaperByTitle, &mut query_params);
         loop {
@@ -557,19 +562,15 @@ impl SemanticScholar {
                 )));
             }
 
-            let body = client
-                .get(url.clone())
-                .send()
-                .await
-                .unwrap()
-                .text()
-                .await
-                .unwrap();
+            let body = client.get(url.clone()).send().await?.text().await?;
             match serde_json::from_str::<PaperIds>(&body) {
                 Ok(response) => {
                     if response.data.len() < 1 {
                         max_retry_count -= 1;
-                        self.sleep(wait_time, "Response is empty");
+                        self.sleep(
+                            wait_time,
+                            format!("Error: Response is empty. Body: {}", &body).as_str(),
+                        );
                         continue;
                     }
                     let paper = response.data.first().unwrap().clone();
@@ -577,7 +578,10 @@ impl SemanticScholar {
                 }
                 Err(e) => {
                     max_retry_count -= 1;
-                    self.sleep(wait_time, &e.to_string());
+                    self.sleep(
+                        wait_time,
+                        format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                    );
                     continue;
                 }
             }
@@ -629,6 +633,8 @@ impl SemanticScholar {
         }
 
         let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
         if !self.api_key.is_empty() {
             headers.insert("x-api-key", self.api_key.parse().unwrap());
         }
@@ -645,21 +651,17 @@ impl SemanticScholar {
                     query_params.paper_id
                 )));
             }
-            let body = client
-                .get(url.clone())
-                .send()
-                .await
-                .unwrap()
-                .text()
-                .await
-                .unwrap();
+            let body = client.get(url.clone()).send().await?.text().await?;
             match serde_json::from_str::<Paper>(&body) {
                 Ok(response) => {
                     return Ok(response);
                 }
                 Err(e) => {
                     max_retry_count -= 1;
-                    self.sleep(wait_time, &e.to_string());
+                    self.sleep(
+                        wait_time,
+                        format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                    );
                     continue;
                 }
             }
@@ -682,6 +684,8 @@ impl SemanticScholar {
         }
 
         let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
         if !self.api_key.is_empty() {
             headers.insert("x-api-key", self.api_key.parse().unwrap());
         }
@@ -701,14 +705,17 @@ impl SemanticScholar {
             }
             match client.get(url.clone()).send().await {
                 Ok(response) => {
-                    let body = response.text().await.unwrap();
+                    let body = response.text().await?;
                     match serde_json::from_str::<ResponsePapers>(&body) {
                         Ok(response) => {
                             return Ok(response);
                         }
                         Err(e) => {
                             max_retry_count -= 1;
-                            self.sleep(wait_time, &e.to_string());
+                            self.sleep(
+                                wait_time,
+                                format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                            );
                             continue;
                         }
                     }
@@ -738,6 +745,8 @@ impl SemanticScholar {
         }
 
         let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
         if !self.api_key.is_empty() {
             headers.insert("x-api-key", self.api_key.parse().unwrap());
         }
@@ -754,16 +763,20 @@ impl SemanticScholar {
                     query_params.paper_id
                 )));
             }
+
             match client.get(url.clone()).send().await {
                 Ok(response) => {
-                    let body = response.text().await.unwrap();
+                    let body = response.text().await?;
                     match serde_json::from_str::<ResponsePapers>(&body) {
                         Ok(response) => {
                             return Ok(response);
                         }
                         Err(e) => {
                             max_retry_count -= 1;
-                            self.sleep(wait_time, &e.to_string());
+                            self.sleep(
+                                wait_time,
+                                format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                            );
                             continue;
                         }
                     }
