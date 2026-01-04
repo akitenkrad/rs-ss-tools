@@ -10,6 +10,9 @@ pub enum Endpoint {
     GetAuthorDetails,
     GetReferencesOfAPaper,
     GetCitationsOfAPaper,
+    SearchAuthors,
+    GetAuthorPapers,
+    GetPaperAuthors,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -392,4 +395,36 @@ pub struct ResponsePapers {
     #[serde(default = "Option::default")]
     pub next: Option<u64>,
     pub data: Vec<ResponseData>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AuthorSearchResponse {
+    #[serde(default = "usize::default")]
+    pub offset: usize,
+    #[serde(default = "Option::default")]
+    pub next: Option<usize>,
+    #[serde(default = "usize::default")]
+    pub total: usize,
+    #[serde(default = "Vec::new")]
+    pub data: Vec<Author>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AuthorPapersResponse {
+    #[serde(default = "Option::default")]
+    pub offset: Option<u64>,
+    #[serde(default = "Option::default")]
+    pub next: Option<u64>,
+    #[serde(default = "Vec::new")]
+    pub data: Vec<Paper>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PaperAuthorsResponse {
+    #[serde(default = "Option::default")]
+    pub offset: Option<u64>,
+    #[serde(default = "Option::default")]
+    pub next: Option<u64>,
+    #[serde(default = "Vec::new")]
+    pub data: Vec<Author>,
 }

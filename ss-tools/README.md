@@ -1,4 +1,3 @@
-[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/X1fiE4koKU88Z9sKwWoPAH/T3F3Mv6HZoDH8Y7VMceoir/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/X1fiE4koKU88Z9sKwWoPAH/T3F3Mv6HZoDH8Y7VMceoir/tree/main)
 ![Crates.io Version](https://img.shields.io/crates/v/ss-tools?style=flat-square&color=blue)
 
 # Rust Semantic Scholar API Tools
@@ -40,6 +39,17 @@ See the documents -> [Documents](https://docs.rs/ss-tools/latest/ss_tools/index.
 ## Updates
 
 <details open>
+<summary>1.0.0</summary>
+
+- **Breaking Change**: Changed structs' fields visibility to `pub`.
+- Added new endpoints for paper search and author details.
+- Updated the way to query with parameters using `QueryParams` builder pattern.
+- Fixed URL encoding for query text.
+- Changed license to MIT.
+
+</details>
+
+<details>
 <summary>0.2.6</summary>
 
 - Fixed to a bug: `Author.author_id: String` => `Author.author_id: Option<String>`

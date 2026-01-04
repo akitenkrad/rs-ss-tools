@@ -46,13 +46,13 @@
 //! | [Paper bulk search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_bulk_search) | ✅  | [`SemanticScholar::bulk_query_by_ids`] |
 //! | [Paper title search](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_paper_title_search) | ✅ |[`SemanticScholar::query_a_paper_by_title`] |
 //! | [Details about a paper](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper) | ✅ | [`SemanticScholar::query_paper_details`] |
-//! | [Details about a paper's authors](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_authors) | - | |
+//! | [Details about a paper's authors](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_authors) | ✅ | [`SemanticScholar::query_paper_authors`] |
 //! | [Details about a paper's citations](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_citations) | ✅ | [`SemanticScholar::query_paper_citations`] |
 //! | [Details about a paper's references](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_references) | ✅ | [`SemanticScholar::query_paper_references`] |
 //! | [Get details for multiple authors at once](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/post_graph_get_authors) | - | |
-//! | [Search for authors by name](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_search) | - | |
-//! | [Details about an author](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author) | - | |
-//! | [Details about an author's papers](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_papers) | - | |
+//! | [Search for authors by name](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_search) | ✅ | [`SemanticScholar::search_authors`] |
+//! | [Details about an author](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author) | ✅ | [`SemanticScholar::query_author_details`] |
+//! | [Details about an author's papers](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_papers) | ✅ | [`SemanticScholar::query_author_papers`] |
 
 pub mod structs;
 pub mod tutorials;
@@ -77,6 +77,7 @@ pub struct QueryParams {
     pub paper_id: String,
     pub query_text: Option<String>,
     pub fields: Option<Vec<PaperField>>,
+    pub author_fields: Option<Vec<AuthorField>>,
     pub publication_types: Option<Vec<PublicationTypes>>,
     pub open_access_pdf: Option<bool>,
     pub min_citation_count: Option<u32>,
@@ -101,6 +102,10 @@ impl QueryParams {
     }
     pub fn fields(&mut self, fields: Vec<PaperField>) -> &mut Self {
         self.fields = Some(fields);
+        self
+    }
+    pub fn author_fields(&mut self, author_fields: Vec<AuthorField>) -> &mut Self {
+        self.author_fields = Some(author_fields);
         self
     }
     pub fn publication_types(&mut self, publication_types: Vec<PublicationTypes>) -> &mut Self {
@@ -173,6 +178,14 @@ impl QueryParams {
             .join(",")
     }
 
+    fn author_fields2string(&self, author_fields: Vec<AuthorField>) -> String {
+        author_fields
+            .iter()
+            .map(|field| encode(&field.to_string()))
+            .collect::<Vec<String>>()
+            .join(",")
+    }
+
     pub fn build(&self) -> String {
         let mut query_params = Vec::new();
 
@@ -182,6 +195,10 @@ impl QueryParams {
         if let Some(fields) = &self.fields {
             let fields = self.fields2string(fields.clone());
             query_params.push(format!("fields={}", fields));
+        }
+        if let Some(author_fields) = &self.author_fields {
+            let author_fields = self.author_fields2string(author_fields.clone());
+            query_params.push(format!("fields={}", author_fields));
         }
         if let Some(publication_types) = &self.publication_types {
             let publication_types = self.publication_types2string(publication_types.clone());
@@ -300,6 +317,27 @@ impl SemanticScholar {
             Endpoint::GetCitationsOfAPaper => {
                 let url = format!(
                     "https://api.semanticscholar.org/graph/v1/paper/{}/citations{}",
+                    paper_id, query_params
+                );
+                return url;
+            }
+            Endpoint::SearchAuthors => {
+                let url = format!(
+                    "https://api.semanticscholar.org/graph/v1/author/search{}",
+                    query_params
+                );
+                return url;
+            }
+            Endpoint::GetAuthorPapers => {
+                let url = format!(
+                    "https://api.semanticscholar.org/graph/v1/author/{}/papers{}",
+                    paper_id, query_params
+                );
+                return url;
+            }
+            Endpoint::GetPaperAuthors => {
+                let url = format!(
+                    "https://api.semanticscholar.org/graph/v1/paper/{}/authors{}",
                     paper_id, query_params
                 );
                 return url;
@@ -768,6 +806,322 @@ impl SemanticScholar {
                 Ok(response) => {
                     let body = response.text().await?;
                     match serde_json::from_str::<ResponsePapers>(&body) {
+                        Ok(response) => {
+                            return Ok(response);
+                        }
+                        Err(e) => {
+                            max_retry_count -= 1;
+                            self.sleep(
+                                wait_time,
+                                format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                            );
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    max_retry_count -= 1;
+                    self.sleep(wait_time, &e.to_string());
+                    continue;
+                }
+            }
+        }
+    }
+
+    /// # Description
+    /// Get details about an author by their Semantic Scholar author ID.
+    /// Available fields for `author_fields: Vec<AuthorField>`, see: [`AuthorField`].
+    /// See for more details: [Details about an author](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use anyhow::Result;
+    /// # use ss_tools::{SemanticScholar, QueryParams};
+    /// # use ss_tools::structs::AuthorField;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// let mut ss = SemanticScholar::new();
+    /// let mut query_params = QueryParams::default();
+    /// query_params.paper_id("1741101");  // author_id is passed via paper_id field
+    /// query_params.author_fields(vec![
+    ///     AuthorField::Name,
+    ///     AuthorField::PaperCount,
+    ///     AuthorField::CitationCount,
+    ///     AuthorField::HIndex,
+    /// ]);
+    /// let author = ss.query_author_details(query_params, 5, 10).await.unwrap();
+    /// assert!(author.name.is_some());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn query_author_details(
+        &mut self,
+        query_params: QueryParams,
+        max_retry_count: u64,
+        wait_time: u64,
+    ) -> Result<Author> {
+        let mut query_params = query_params.clone();
+        let mut max_retry_count = max_retry_count.clone();
+
+        let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
+        if !self.api_key.is_empty() {
+            headers.insert("x-api-key", self.api_key.parse().unwrap());
+        }
+        let client = request::Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap();
+
+        let url = self.get_url(Endpoint::GetAuthorDetails, &mut query_params);
+        loop {
+            if max_retry_count == 0 {
+                return Err(Error::msg(format!(
+                    "Failed to get author details: {}",
+                    query_params.paper_id
+                )));
+            }
+            let body = client.get(url.clone()).send().await?.text().await?;
+            match serde_json::from_str::<Author>(&body) {
+                Ok(response) => {
+                    return Ok(response);
+                }
+                Err(e) => {
+                    max_retry_count -= 1;
+                    self.sleep(
+                        wait_time,
+                        format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                    );
+                    continue;
+                }
+            }
+        }
+    }
+
+    /// # Description
+    /// Search for authors by name.
+    /// Available fields for `author_fields: Vec<AuthorField>`, see: [`AuthorField`].
+    /// See for more details: [Search for authors by name](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_search)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use anyhow::Result;
+    /// # use ss_tools::{SemanticScholar, QueryParams};
+    /// # use ss_tools::structs::AuthorField;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// let mut ss = SemanticScholar::new();
+    /// let mut query_params = QueryParams::default();
+    /// query_params.query_text("Yoshua Bengio");
+    /// query_params.author_fields(vec![
+    ///     AuthorField::Name,
+    ///     AuthorField::PaperCount,
+    ///     AuthorField::CitationCount,
+    /// ]);
+    /// let response = ss.search_authors(query_params, 5, 10).await.unwrap();
+    /// assert!(!response.data.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn search_authors(
+        &mut self,
+        query_params: QueryParams,
+        max_retry_count: u64,
+        wait_time: u64,
+    ) -> Result<AuthorSearchResponse> {
+        let mut query_params = query_params.clone();
+        let mut max_retry_count = max_retry_count.clone();
+
+        let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
+        if !self.api_key.is_empty() {
+            headers.insert("x-api-key", self.api_key.parse().unwrap());
+        }
+        let client = request::Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap();
+
+        let url = self.get_url(Endpoint::SearchAuthors, &mut query_params);
+        loop {
+            if max_retry_count == 0 {
+                return Err(Error::msg("Failed to search authors"));
+            }
+            match client.get(url.clone()).send().await {
+                Ok(response) => {
+                    let body = response.text().await?;
+                    match serde_json::from_str::<AuthorSearchResponse>(&body) {
+                        Ok(response) => {
+                            return Ok(response);
+                        }
+                        Err(e) => {
+                            max_retry_count -= 1;
+                            self.sleep(
+                                wait_time,
+                                format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                            );
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    max_retry_count -= 1;
+                    self.sleep(wait_time, &e.to_string());
+                    continue;
+                }
+            }
+        }
+    }
+
+    /// # Description
+    /// Get papers by an author.
+    /// Available fields for `fields: Vec<PaperField>`, see: [`PaperField`].
+    /// See for more details: [Details about an author's papers](https://api.semanticscholar.org/api-docs/#tag/Author-Data/operation/get_graph_get_author_papers)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use anyhow::Result;
+    /// # use ss_tools::{SemanticScholar, QueryParams};
+    /// # use ss_tools::structs::PaperField;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// let mut ss = SemanticScholar::new();
+    /// let mut query_params = QueryParams::default();
+    /// query_params.paper_id("1741101");  // author_id is passed via paper_id field
+    /// query_params.fields(vec![
+    ///     PaperField::Title,
+    ///     PaperField::Year,
+    ///     PaperField::CitationCount,
+    /// ]);
+    /// query_params.limit(10);
+    /// let response = ss.query_author_papers(query_params, 5, 10).await.unwrap();
+    /// assert!(!response.data.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn query_author_papers(
+        &mut self,
+        query_params: QueryParams,
+        max_retry_count: u64,
+        wait_time: u64,
+    ) -> Result<AuthorPapersResponse> {
+        let mut query_params = query_params.clone();
+        let mut max_retry_count = max_retry_count.clone();
+
+        let mut fields = query_params.fields.clone().unwrap_or_default();
+        if !fields.contains(&PaperField::PaperId) {
+            fields.push(PaperField::PaperId);
+            query_params.fields = Some(fields);
+        }
+
+        let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
+        if !self.api_key.is_empty() {
+            headers.insert("x-api-key", self.api_key.parse().unwrap());
+        }
+        let client = request::Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap();
+
+        let url = self.get_url(Endpoint::GetAuthorPapers, &mut query_params);
+        loop {
+            if max_retry_count == 0 {
+                return Err(Error::msg(format!(
+                    "Failed to get author papers: {}",
+                    query_params.paper_id
+                )));
+            }
+            match client.get(url.clone()).send().await {
+                Ok(response) => {
+                    let body = response.text().await?;
+                    match serde_json::from_str::<AuthorPapersResponse>(&body) {
+                        Ok(response) => {
+                            return Ok(response);
+                        }
+                        Err(e) => {
+                            max_retry_count -= 1;
+                            self.sleep(
+                                wait_time,
+                                format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
+                            );
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    max_retry_count -= 1;
+                    self.sleep(wait_time, &e.to_string());
+                    continue;
+                }
+            }
+        }
+    }
+
+    /// # Description
+    /// Get authors of a paper.
+    /// Available fields for `author_fields: Vec<AuthorField>`, see: [`AuthorField`].
+    /// See for more details: [Details about a paper's authors](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/get_graph_get_paper_authors)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use anyhow::Result;
+    /// # use ss_tools::{SemanticScholar, QueryParams};
+    /// # use ss_tools::structs::AuthorField;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// let mut ss = SemanticScholar::new();
+    /// let mut query_params = QueryParams::default();
+    /// query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+    /// query_params.author_fields(vec![
+    ///     AuthorField::Name,
+    ///     AuthorField::PaperCount,
+    ///     AuthorField::CitationCount,
+    /// ]);
+    /// let response = ss.query_paper_authors(query_params, 5, 10).await.unwrap();
+    /// assert!(!response.data.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn query_paper_authors(
+        &mut self,
+        query_params: QueryParams,
+        max_retry_count: u64,
+        wait_time: u64,
+    ) -> Result<PaperAuthorsResponse> {
+        let mut query_params = query_params.clone();
+        let mut max_retry_count = max_retry_count.clone();
+
+        let mut headers = header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+        headers.insert("user-agent", "ss-tools/0.1".parse().unwrap());
+        if !self.api_key.is_empty() {
+            headers.insert("x-api-key", self.api_key.parse().unwrap());
+        }
+        let client = request::Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap();
+
+        let url = self.get_url(Endpoint::GetPaperAuthors, &mut query_params);
+        loop {
+            if max_retry_count == 0 {
+                return Err(Error::msg(format!(
+                    "Failed to get paper authors: {}",
+                    query_params.paper_id
+                )));
+            }
+            match client.get(url.clone()).send().await {
+                Ok(response) => {
+                    let body = response.text().await?;
+                    match serde_json::from_str::<PaperAuthorsResponse>(&body) {
                         Ok(response) => {
                             return Ok(response);
                         }

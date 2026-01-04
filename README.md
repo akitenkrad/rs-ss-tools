@@ -1,214 +1,254 @@
-[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/X1fiE4koKU88Z9sKwWoPAH/T3F3Mv6HZoDH8Y7VMceoir/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/X1fiE4koKU88Z9sKwWoPAH/T3F3Mv6HZoDH8Y7VMceoir/tree/main)
 ![Crates.io Version](https://img.shields.io/crates/v/ss-tools?style=flat-square&color=blue)
 
 # Rust Semantic Scholar API Tools
 
-Tools for Semantic Scholar API.
+A Rust library for the [Semantic Scholar API](https://api.semanticscholar.org/).
 
-[Documents](https://crates.io/crates/ss-tools)
+[Documentation](https://docs.rs/ss-tools)
 
-<img src="LOGO.png" alt="LOGO" width="150" height="150">
+## Features
+
+- Paper search and retrieval
+- Author search and retrieval
+- Citation and reference graphs
+- Bulk paper queries
+- Async/await support with retry logic
 
 ## Quick Start
 
 ### Installation
 
-To start using `ss-tools`, just add it to your project's dependencies in the `Cargo.toml`.
-
 ```bash
-> cargo add ss-tools
+cargo add ss-tools
 ```
 
-### API Key
+### API Key (Optional)
 
-If you have an API key, set it as an environmental value in a `.env` file
+Set your API key in a `.env` file for higher rate limits:
 
 ```text
-SEMANTIC_SCHOLAR_API_KEY = xxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-Then, import it in your program;
-
-```rust
-use ss_tools::SemanticScholar;
+SEMANTIC_SCHOLAR_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ## Usage
 
-### Search by paper title
-
-Pass any keywords or title of a paper.
-The original API returns multiple papers that could be related to the `query_text`.
-For now, `ss-tools` returns the first paper from the response.
-
-In the future, we plan to improve the library to output the paper most relevant to the `query_text` based on similarity metrics.
+### Search for a Paper by Title
 
 ```rust
-let query_text = "attention is all you need";
+use ss_tools::{SemanticScholar, QueryParams};
+use ss_tools::structs::PaperField;
 
 let mut ss = SemanticScholar::new();
-let paper_id = ss.query_paper_id(query_text.to_string(), &mut 5, 10).await; // paperId, max_retry_count, wait_time(sec)
-assert_eq!(paper_id, "204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+let mut query_params = QueryParams::default();
+query_params.query_text("Attention Is All You Need");
+query_params.fields(vec![PaperField::Title, PaperField::Year, PaperField::CitationCount]);
+
+let paper = ss.query_a_paper_by_title(query_params, 5, 10).await?;
+println!("Title: {:?}", paper.title);
 ```
 
-### Get details about a paper
-
-Pass the paper_id that you want to know its details, and a list of `SsField`.
-
-The returned `SsResponse` object has all the available fields.
+### Get Paper Details
 
 ```rust
-let paper_id = "204e3073870fae3d05bcbc2f6a8e263d9b72e776";
+use ss_tools::{SemanticScholar, QueryParams};
+use ss_tools::structs::{PaperField, AuthorField};
 
 let mut ss = SemanticScholar::new();
-let fields = vec![
-    SsField::Title,
-    SsField::Abstract,
-    SsField::Authors(vec![
-        SsAuthorField::Name,
-        SsAuthorField::Affiliations,
-        SsAuthorField::HIndex,
-    ]),
-    SsField::CitationCount,
-    SsField::ReferenceCount,
-    SsField::Year,
-    SsField::IsOpenAccess,
-    SsField::PublicationDate,
-    SsField::Venue,
-    SsField::FieldsOfStudy,
-    SsField::Citations(vec![SsField::Title, SsField::Year, SsField::CitationCount]),
-    SsField::References(vec![SsField::Title, SsField::Year, SsField::CitationCount]),
-    SsField::Journal,
-    SsField::PublicationVenue,
-    SsField::OpenAccessPdf,
-    SsField::S2FieldsOfStudy,
-    SsField::PublicationTypes,
-    SsField::CitationStyles,
-    SsField::Embedding,
+let mut query_params = QueryParams::default();
+query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+query_params.fields(vec![
+    PaperField::Title,
+    PaperField::Abstract,
+    PaperField::Authors(vec![AuthorField::Name, AuthorField::HIndex]),
+    PaperField::CitationCount,
+    PaperField::Year,
+]);
+
+let paper = ss.query_paper_details(query_params, 5, 10).await?;
+println!("Title: {:?}", paper.title);
+```
+
+### Get Paper Citations
+
+```rust
+use ss_tools::{SemanticScholar, QueryParams};
+use ss_tools::structs::PaperField;
+
+let mut ss = SemanticScholar::new();
+let mut query_params = QueryParams::default();
+query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+query_params.fields(vec![PaperField::Title, PaperField::Year]);
+
+let citations = ss.query_paper_citations(query_params, 5, 10).await?;
+println!("Found {} citations", citations.data.len());
+```
+
+### Get Paper References
+
+```rust
+use ss_tools::{SemanticScholar, QueryParams};
+use ss_tools::structs::PaperField;
+
+let mut ss = SemanticScholar::new();
+let mut query_params = QueryParams::default();
+query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+query_params.fields(vec![PaperField::Title, PaperField::Year]);
+
+let references = ss.query_paper_references(query_params, 5, 10).await?;
+println!("Found {} references", references.data.len());
+```
+
+### Get Authors of a Paper
+
+```rust
+use ss_tools::{SemanticScholar, QueryParams};
+use ss_tools::structs::AuthorField;
+
+let mut ss = SemanticScholar::new();
+let mut query_params = QueryParams::default();
+query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
+query_params.author_fields(vec![
+    AuthorField::Name,
+    AuthorField::PaperCount,
+    AuthorField::CitationCount,
+]);
+
+let response = ss.query_paper_authors(query_params, 5, 10).await?;
+println!("Found {} authors", response.data.len());
+```
+
+### Get Author Details
+
+```rust
+use ss_tools::{SemanticScholar, QueryParams};
+use ss_tools::structs::AuthorField;
+
+let mut ss = SemanticScholar::new();
+let mut query_params = QueryParams::default();
+query_params.paper_id("1741101");  // author_id
+query_params.author_fields(vec![
+    AuthorField::Name,
+    AuthorField::PaperCount,
+    AuthorField::CitationCount,
+    AuthorField::HIndex,
+]);
+
+let author = ss.query_author_details(query_params, 5, 10).await?;
+println!("Author: {:?}", author.name);
+```
+
+### Search Authors by Name
+
+```rust
+use ss_tools::{SemanticScholar, QueryParams};
+use ss_tools::structs::AuthorField;
+
+let mut ss = SemanticScholar::new();
+let mut query_params = QueryParams::default();
+query_params.query_text("Geoffrey Hinton");
+query_params.author_fields(vec![
+    AuthorField::Name,
+    AuthorField::PaperCount,
+    AuthorField::CitationCount,
+]);
+
+let response = ss.search_authors(query_params, 5, 10).await?;
+println!("Found {} authors", response.data.len());
+```
+
+### Get Papers by an Author
+
+```rust
+use ss_tools::{SemanticScholar, QueryParams};
+use ss_tools::structs::PaperField;
+
+let mut ss = SemanticScholar::new();
+let mut query_params = QueryParams::default();
+query_params.paper_id("1741101");  // author_id
+query_params.fields(vec![
+    PaperField::Title,
+    PaperField::Year,
+    PaperField::CitationCount,
+]);
+query_params.limit(10);
+
+let response = ss.query_author_papers(query_params, 5, 10).await?;
+println!("Found {} papers", response.data.len());
+```
+
+### Bulk Query Papers
+
+```rust
+use ss_tools::SemanticScholar;
+use ss_tools::structs::PaperField;
+
+let paper_ids = vec![
+    "649def34f8be52c8b66281af98ae884c09aef38b",
+    "ARXIV:2106.15928",
 ];
-
-let paper_details: SsResponse = ss.query_paper_details(paper_id.to_string(), fields, &mut 5, 10).await; // paper_id ,fields, max_retry_count, wait_time(sec)
-assert_eq!(
-    paper_details.clone().title.unwrap().to_lowercase(),
-    "attention is all you need".to_string()
-);
-```
-
-For detials about `SsResponse`, see the document [Struct SsResponse](https://docs.rs/ss-tools/0.2.1/ss_tools/struct.SsResponse.html).
-
-### Get references of a paper
-
-```rust
-let paper_id = "204e3073870fae3d05bcbc2f6a8e263d9b72e776";
+let fields = vec![PaperField::Title, PaperField::CitationCount];
 
 let mut ss = SemanticScholar::new();
-let fields = vec![
-    SsField::Title,
-    SsField::Year,
-    SsField::Contexts,
-    SsField::Intents,
-    SsField::IsInfluential,
-    SsField::ContextsWithIntent,
-];
-
-let paper_citations: SsResponsePapers = ss
-    .query_paper_citations(paper_id.to_string(), fields, &mut 5, 10) // paper_id, fields, max_retry_count, wait_time(sec)
-    .await
-    .unwrap();
-
-// SsResponsePapers.data: Vec<SsResponse>
-assert!(paper_citations.data.len() > 10);
+let papers = ss.bulk_query_by_ids(paper_ids, fields, 5, 10).await?;
+println!("Retrieved {} papers", papers.len());
 ```
 
-### Get citations of a paper
+## API Coverage
 
-```rust
-let paper_id = "204e3073870fae3d05bcbc2f6a8e263d9b72e776";
+| Endpoint | Status |
+|----------|:------:|
+| Paper relevance search | :white_check_mark: |
+| Paper title search | :white_check_mark: |
+| Paper bulk search | :white_check_mark: |
+| Paper details | :white_check_mark: |
+| Paper citations | :white_check_mark: |
+| Paper references | :white_check_mark: |
+| Paper authors | :white_check_mark: |
+| Author details | :white_check_mark: |
+| Author search | :white_check_mark: |
+| Author papers | :white_check_mark: |
 
-let mut ss = SemanticScholar::new();
-let fields = vec![
-    SsField::Title,
-    SsField::Year,
-    SsField::Contexts,
-    SsField::Intents,
-    SsField::IsInfluential,
-    SsField::ContextsWithIntent,
-];
+## Changelog
 
-let paper_citations: SsResponsePapers = ss
-    .query_paper_references(paper_id.to_string(), fields, &mut 5, 10) // paperId, fields, max_retry_count, wait_time(sec)
-    .await
-    .unwrap();
+### 1.0.0
 
-// SsResponsePapers.data: Vec<SsResponse>
-assert!(paper_citations.data.len() > 10);
-```
+- Added Author Data APIs:
+  - `query_author_details()` - Get author by ID
+  - `search_authors()` - Search authors by name
+  - `query_author_papers()` - Get papers by author
+  - `query_paper_authors()` - Get authors of a paper
+- Added `author_fields` to `QueryParams`
+- Added new response structs: `AuthorSearchResponse`, `AuthorPapersResponse`, `PaperAuthorsResponse`
+- Updated documentation and tutorials
 
-### Get details about a author
+### 0.2.7
 
-COMMING SOON!
+- Changed visibility of structs' fields from `private` to `public`
 
-## Updates
+### 0.2.6
 
-<details open>
-<summary>0.2.7</summary>
+- Fixed bug: `Author.author_id: String` => `Author.author_id: Option<String>`
 
-- Changed visibility of structs' fields from `private` to `public`.
+### 0.2.5
 
-</details>
+- Fixed retry when API response is empty
 
-<details>
-<summary>0.2.6</summary>
+### 0.2.4
 
-- Fixed to a bug: `Author.author_id: String` => `Author.author_id: Option<String>`
+- Changed module names to be more intuitive
+- Added remaining query parameters
+- Updated documentation
 
-</details>
+### 0.2.3
 
-<details>
-<summary>0.2.5</summary>
+- Added bulk paper query endpoint
 
-- Fixed to retry when the api response is empty.
+### 0.2.0
 
-</details>
+- Added Levenshtein algorithm for title matching
+- Added retry loop for API failures
+- Added citations and references APIs
 
-<details>
-<summary>0.2.4</summary>
+## License
 
-- Changed module names to make them more intuitive and easier to understand.
-- Added the rest query parameters.
-- Updated documents.
-
-</details>
-
-<details>
-<summary>0.2.3</summary>
-
-- Added a new endpoint: [`Get details for multiple papers at once`](https://api.semanticscholar.org/api-docs/#tag/Paper-Data/operation/post_graph_get_papers)
-- Updated documents.
-
-</details>
-
-<details>
-<summary>0.2.2</summary>
-
-- Fixed README.md
-  - added the Semantic Scholar instruction about API key.
-
-</details>
-
-<details>
-<summary>0.2.1</summary>
-
-- Fixed README.md
-
-</details>
-
-<details>
-<summary>0.2.0</summary>
-
-- apply the Levenshtein algorithm to extract the correct title.
-- added retry loop when the Semantic Scholar API fails.
-- added new API to get citations of a paper
-- added new API to get references of a paper
-
-</details>
+MIT

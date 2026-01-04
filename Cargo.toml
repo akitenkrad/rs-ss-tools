@@ -3,7 +3,7 @@ resolver = "2"
 members = ["ss-tools"]
 
 [workspace.package]
-version = "0.2.7"
+version = "1.0.0"
 edition = "2021"
 authors = ["akitenkrad"]
 description = "Tools for Semantic Scholar API"
