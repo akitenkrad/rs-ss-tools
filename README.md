@@ -47,7 +47,7 @@ let paper = ss.query_a_paper_by_title(query_params, 5, 10).await?;
 println!("Title: {:?}", paper.title);
 ```
 
-### Get Paper Details
+### Get Paper Details with External IDs
 
 ```rust
 use ss_tools::{SemanticScholar, QueryParams};
@@ -59,6 +59,7 @@ query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
 query_params.fields(vec![
     PaperField::Title,
     PaperField::Abstract,
+    PaperField::ExternalIds,
     PaperField::Authors(vec![AuthorField::Name, AuthorField::HIndex]),
     PaperField::CitationCount,
     PaperField::Year,
@@ -66,6 +67,12 @@ query_params.fields(vec![
 
 let paper = ss.query_paper_details(query_params, 5, 10).await?;
 println!("Title: {:?}", paper.title);
+
+// Access external IDs (ArXiv, DOI, etc.)
+if let Some(ids) = &paper.external_ids {
+    println!("DOI: {:?}", ids.doi);
+    println!("ArXiv: {:?}", ids.arxiv);
+}
 ```
 
 ### Get Paper Citations
@@ -209,6 +216,13 @@ println!("Retrieved {} papers", papers.len());
 | Author papers | :white_check_mark: |
 
 ## Changelog
+
+### 1.1.0
+
+- Added `ExternalIds` struct with support for ArXiv, DOI, DBLP, PubMed, PubMedCentral, MAG, ACL, and CorpusId
+- Added `PaperField::ExternalIds` variant for requesting external IDs from the API
+- Added `external_ids` field to `Paper` struct
+- This enables downstream consumers to resolve PDF URLs via ArXiv ID or DOI when `openAccessPdf` is unavailable
 
 ### 1.0.0
 

@@ -27,6 +27,34 @@
 //! | `citation_count` | `Option<u32>` | Number of citations |
 //! | `reference_count` | `Option<u32>` | Number of references |
 //! | `authors` | `Option<Vec<Author>>` | List of authors |
+//! | `external_ids` | `Option<ExternalIds>` | External IDs (ArXiv, DOI, etc.) |
+//! | `open_access_pdf` | `Option<OpenAccessPdf>` | Open access PDF URL |
+//!
+//! ## ExternalIds Struct
+//!
+//! The [`ExternalIds`](crate::structs::ExternalIds) struct provides access to external identifiers
+//! such as ArXiv ID, DOI, DBLP, PubMed, MAG, ACL, and CorpusId.
+//!
+//! ```rust
+//! use ss_tools::structs::ExternalIds;
+//!
+//! let ids = ExternalIds::default();
+//! assert!(ids.arxiv.is_none());
+//! assert!(ids.doi.is_none());
+//! ```
+//!
+//! ### ExternalIds Fields
+//!
+//! | Field | Type | Description |
+//! |-------|------|-------------|
+//! | `arxiv` | `Option<String>` | ArXiv ID (e.g., "1706.03762") |
+//! | `doi` | `Option<String>` | DOI (e.g., "10.48550/arXiv.1706.03762") |
+//! | `dblp` | `Option<String>` | DBLP ID |
+//! | `pubmed` | `Option<String>` | PubMed ID |
+//! | `pubmed_central` | `Option<String>` | PubMed Central ID |
+//! | `mag` | `Option<String>` | Microsoft Academic Graph ID |
+//! | `acl` | `Option<String>` | ACL Anthology ID |
+//! | `corpus_id` | `Option<u64>` | Semantic Scholar Corpus ID |
 //!
 //! ## Author Struct
 //!
@@ -65,6 +93,7 @@
 //!     PaperField::Abstract,
 //!     PaperField::Year,
 //!     PaperField::CitationCount,
+//!     PaperField::ExternalIds,
 //! ];
 //! ```
 //!

@@ -49,6 +49,7 @@
 //!         PaperField::Title,
 //!         PaperField::CitationCount,
 //!         PaperField::ReferenceCount,
+//!         PaperField::ExternalIds,
 //!     ]);
 //! ```
 //!

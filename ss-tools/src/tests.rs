@@ -52,6 +52,10 @@ fn test_paper_deserialization() {
         pv.url.unwrap(),
         "https://www.aclweb.org/anthology/venues/acl/"
     );
+
+    let external_ids = response.external_ids.unwrap();
+    assert_eq!(external_ids.doi.unwrap(), "10.18653/v1/2020.acl-main.447");
+    assert_eq!(external_ids.corpus_id.unwrap(), 215416146);
 }
 
 #[test]
@@ -157,6 +161,66 @@ fn test_citation_styles_deserialization() {
     }"#;
     let styles = serde_json::from_str::<CitationStyles>(json).unwrap();
     assert_eq!(styles.bibtex.unwrap(), "@article{doe2023, title={Test}}");
+}
+
+#[test]
+fn test_external_ids_deserialization() {
+    let json = r#"{
+        "ArXiv": "1706.03762",
+        "DOI": "10.48550/arXiv.1706.03762",
+        "DBLP": "journals/corr/VaswaniSPUJGKP17",
+        "MAG": "2963403868",
+        "CorpusId": 13756489
+    }"#;
+    let ids = serde_json::from_str::<ExternalIds>(json).unwrap();
+    assert_eq!(ids.arxiv.unwrap(), "1706.03762");
+    assert_eq!(ids.doi.unwrap(), "10.48550/arXiv.1706.03762");
+    assert_eq!(ids.dblp.unwrap(), "journals/corr/VaswaniSPUJGKP17");
+    assert!(ids.pubmed.is_none());
+    assert_eq!(ids.mag.unwrap(), "2963403868");
+    assert!(ids.acl.is_none());
+    assert_eq!(ids.corpus_id.unwrap(), 13756489);
+}
+
+#[test]
+fn test_external_ids_deserialization_empty() {
+    let json = r#"{}"#;
+    let ids = serde_json::from_str::<ExternalIds>(json).unwrap();
+    assert!(ids.arxiv.is_none());
+    assert!(ids.doi.is_none());
+}
+
+#[test]
+fn test_external_ids_deserialization_null_values() {
+    let json = r#"{
+        "ArXiv": null,
+        "DOI": "10.1234/test",
+        "PubMed": null,
+        "CorpusId": null
+    }"#;
+    let ids = serde_json::from_str::<ExternalIds>(json).unwrap();
+    assert!(ids.arxiv.is_none());
+    assert_eq!(ids.doi.unwrap(), "10.1234/test");
+    assert!(ids.pubmed.is_none());
+    assert!(ids.corpus_id.is_none());
+}
+
+#[test]
+fn test_paper_deserialization_with_external_ids() {
+    let json = r#"{
+        "paperId": "204e3073870fae3d05bcbc2f6a8e263d9b72e776",
+        "title": "Attention is All you Need",
+        "externalIds": {
+            "ArXiv": "1706.03762",
+            "DOI": "10.48550/arXiv.1706.03762",
+            "CorpusId": 13756489
+        }
+    }"#;
+    let paper = serde_json::from_str::<Paper>(json).unwrap();
+    let ids = paper.external_ids.unwrap();
+    assert_eq!(ids.arxiv.unwrap(), "1706.03762");
+    assert_eq!(ids.doi.unwrap(), "10.48550/arXiv.1706.03762");
+    assert_eq!(ids.corpus_id.unwrap(), 13756489);
 }
 
 #[test]
@@ -311,6 +375,14 @@ fn test_query_params_build_with_open_access_pdf() {
 }
 
 #[test]
+fn test_query_params_build_with_external_ids_field() {
+    let mut params = QueryParams::default();
+    params.fields(vec![PaperField::Title, PaperField::ExternalIds]);
+    let result = params.build();
+    assert!(result.contains("externalIds"));
+}
+
+#[test]
 fn test_query_params_build_multiple() {
     let mut params = QueryParams::default();
     params.query_text("machine learning");
@@ -354,6 +426,7 @@ fn test_paper_field_to_string_basic() {
     assert_eq!(PaperField::Intents.to_string(), "intents");
     assert_eq!(PaperField::IsInfluential.to_string(), "isInfluential");
     assert_eq!(PaperField::ContextsWithIntent.to_string(), "contextsWithIntent");
+    assert_eq!(PaperField::ExternalIds.to_string(), "externalIds");
 }
 
 #[test]

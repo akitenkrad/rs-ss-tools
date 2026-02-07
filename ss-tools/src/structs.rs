@@ -73,6 +73,7 @@ pub enum PaperField {
     Intents,
     IsInfluential,
     ContextsWithIntent,
+    ExternalIds,
 }
 
 impl PaperField {
@@ -126,6 +127,7 @@ impl PaperField {
             PaperField::Intents => "intents".to_string(),
             PaperField::IsInfluential => "isInfluential".to_string(),
             PaperField::ContextsWithIntent => "contextsWithIntent".to_string(),
+            PaperField::ExternalIds => "externalIds".to_string(),
         }
     }
 }
@@ -243,6 +245,26 @@ pub struct PublicationVenue {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ExternalIds {
+    #[serde(rename = "ArXiv", default = "Option::default")]
+    pub arxiv: Option<String>,
+    #[serde(rename = "DOI", default = "Option::default")]
+    pub doi: Option<String>,
+    #[serde(rename = "DBLP", default = "Option::default")]
+    pub dblp: Option<String>,
+    #[serde(rename = "PubMed", default = "Option::default")]
+    pub pubmed: Option<String>,
+    #[serde(rename = "PubMedCentral", default = "Option::default")]
+    pub pubmed_central: Option<String>,
+    #[serde(rename = "MAG", default = "Option::default")]
+    pub mag: Option<String>,
+    #[serde(rename = "ACL", default = "Option::default")]
+    pub acl: Option<String>,
+    #[serde(rename = "CorpusId", default = "Option::default")]
+    pub corpus_id: Option<u64>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct OpenAccessPdf {
     #[serde(default = "Option::default")]
     pub url: Option<String>,
@@ -330,6 +352,8 @@ pub struct Paper {
     pub is_open_access: Option<bool>,
     #[serde(rename = "openAccessPdf", default = "Option::default")]
     pub open_access_pdf: Option<OpenAccessPdf>,
+    #[serde(rename = "externalIds", default = "Option::default")]
+    pub external_ids: Option<ExternalIds>,
     #[serde(rename = "fieldsOfStudy", default = "Option::default")]
     pub fields_of_study: Option<Vec<String>>,
     #[serde(rename = "s2FieldsOfStudy", default = "Option::default")]

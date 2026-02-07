@@ -22,6 +22,15 @@
     "citationCount": 453,
     "influentialCitationCount": 90,
     "isOpenAccess": true,
+    "externalIds": {
+        "ArXiv": null,
+        "DOI": "10.18653/v1/2020.acl-main.447",
+        "DBLP": "conf/naacl/AmmarGBBCDDEFHK18",
+        "PubMed": null,
+        "MAG": "2963403868",
+        "ACL": "2020.acl-main.447",
+        "CorpusId": 215416146
+    },
     "openAccessPdf": {
         "url": "https://www.aclweb.org/anthology/2020.acl-main.447.pdf",
         "status": "HYBRID"
