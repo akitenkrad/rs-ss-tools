@@ -1,4 +1,18 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+/// Deserialize `null` as `T::default()` (e.g. empty `Vec`).
+///
+/// `#[serde(default)]` only covers *missing* fields.  When the Semantic Scholar
+/// API explicitly returns `"data": null`, serde tries to deserialize `null`
+/// into `Vec<_>` and fails.  This helper lets `null` round-trip to an empty
+/// collection instead.
+fn null_to_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
+}
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum Endpoint {
@@ -386,7 +400,7 @@ pub struct PaperIds {
     pub offset: usize,
     #[serde(default = "String::new")]
     pub token: String,
-    #[serde(default = "Vec::new")]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub data: Vec<Paper>,
 }
 
@@ -418,7 +432,7 @@ pub struct ResponsePapers {
     pub offset: Option<u64>,
     #[serde(default = "Option::default")]
     pub next: Option<u64>,
-    #[serde(default = "Vec::new")]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub data: Vec<ResponseData>,
 }
 
@@ -430,7 +444,7 @@ pub struct AuthorSearchResponse {
     pub next: Option<usize>,
     #[serde(default = "usize::default")]
     pub total: usize,
-    #[serde(default = "Vec::new")]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub data: Vec<Author>,
 }
 
@@ -440,7 +454,7 @@ pub struct AuthorPapersResponse {
     pub offset: Option<u64>,
     #[serde(default = "Option::default")]
     pub next: Option<u64>,
-    #[serde(default = "Vec::new")]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub data: Vec<Paper>,
 }
 
@@ -450,6 +464,6 @@ pub struct PaperAuthorsResponse {
     pub offset: Option<u64>,
     #[serde(default = "Option::default")]
     pub next: Option<u64>,
-    #[serde(default = "Vec::new")]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub data: Vec<Author>,
 }
