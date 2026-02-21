@@ -418,6 +418,7 @@ pub struct ResponsePapers {
     pub offset: Option<u64>,
     #[serde(default = "Option::default")]
     pub next: Option<u64>,
+    #[serde(default = "Vec::new")]
     pub data: Vec<ResponseData>,
 }
 
