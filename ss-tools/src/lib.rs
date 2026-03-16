@@ -522,6 +522,15 @@ impl SemanticScholar {
             }
 
             let body = client.get(url.clone()).send().await?.text().await?;
+
+            // "Title match not found" is a deterministic response — retrying won't help
+            if body.contains("Title match not found") {
+                return Err(Error::msg(format!(
+                    "Title match not found for: {}",
+                    query_params.query_text.as_deref().unwrap_or("unknown")
+                )));
+            }
+
             match serde_json::from_str::<PaperIds>(&body) {
                 Ok(response) => {
                     if response.data.is_empty() || response.total == 0 {
@@ -604,6 +613,15 @@ impl SemanticScholar {
             }
 
             let body = client.get(url.clone()).send().await?.text().await?;
+
+            // "Title match not found" is a deterministic response — retrying won't help
+            if body.contains("Title match not found") {
+                return Err(Error::msg(format!(
+                    "Title match not found for: {}",
+                    query_params.query_text.as_deref().unwrap_or("unknown")
+                )));
+            }
+
             match serde_json::from_str::<PaperIds>(&body) {
                 Ok(response) => {
                     if response.data.len() < 1 {
