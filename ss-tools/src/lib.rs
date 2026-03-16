@@ -345,7 +345,7 @@ impl SemanticScholar {
         }
     }
 
-    fn sleep(&self, seconds: u64, message: &str) {
+    async fn sleep(&self, seconds: u64, message: &str) {
         let pb = ProgressBar::new(seconds);
         pb.set_style(
             indicatif::ProgressStyle::default_bar()
@@ -362,7 +362,7 @@ impl SemanticScholar {
         }
         for _ in 0..seconds {
             pb.inc(1);
-            std::thread::sleep(std::time::Duration::from_secs(1));
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
         pb.finish_and_clear();
     }
@@ -417,6 +417,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap();
 
@@ -453,7 +454,7 @@ impl SemanticScholar {
                     self.sleep(
                         wait_time,
                         format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                    );
+                    ).await;
                     continue;
                 }
             }
@@ -506,6 +507,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap();
 
@@ -527,7 +529,7 @@ impl SemanticScholar {
                         self.sleep(
                             wait_time,
                             format!("Error: Response is empty. Body: {}", &body).as_str(),
-                        );
+                        ).await;
                         continue;
                     }
                     return Ok(response.data);
@@ -537,7 +539,7 @@ impl SemanticScholar {
                     self.sleep(
                         wait_time,
                         format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                    );
+                    ).await;
                     continue;
                 }
             }
@@ -589,6 +591,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()?;
 
         let url = self.get_url(Endpoint::GetAPaperByTitle, &mut query_params);
@@ -608,7 +611,7 @@ impl SemanticScholar {
                         self.sleep(
                             wait_time,
                             format!("Error: Response is empty. Body: {}", &body).as_str(),
-                        );
+                        ).await;
                         continue;
                     }
                     let paper = response.data.first().unwrap().clone();
@@ -619,7 +622,7 @@ impl SemanticScholar {
                     self.sleep(
                         wait_time,
                         format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                    );
+                    ).await;
                     continue;
                 }
             }
@@ -678,6 +681,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap();
 
@@ -699,7 +703,7 @@ impl SemanticScholar {
                     self.sleep(
                         wait_time,
                         format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                    );
+                    ).await;
                     continue;
                 }
             }
@@ -729,6 +733,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap();
 
@@ -753,14 +758,14 @@ impl SemanticScholar {
                             self.sleep(
                                 wait_time,
                                 format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                            );
+                            ).await;
                             continue;
                         }
                     }
                 }
                 Err(e) => {
                     max_retry_count -= 1;
-                    self.sleep(wait_time, &e.to_string());
+                    self.sleep(wait_time, &e.to_string()).await;
                     continue;
                 }
             }
@@ -790,6 +795,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap();
 
@@ -814,14 +820,14 @@ impl SemanticScholar {
                             self.sleep(
                                 wait_time,
                                 format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                            );
+                            ).await;
                             continue;
                         }
                     }
                 }
                 Err(e) => {
                     max_retry_count -= 1;
-                    self.sleep(wait_time, &e.to_string());
+                    self.sleep(wait_time, &e.to_string()).await;
                     continue;
                 }
             }
@@ -872,6 +878,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap();
 
@@ -893,7 +900,7 @@ impl SemanticScholar {
                     self.sleep(
                         wait_time,
                         format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                    );
+                    ).await;
                     continue;
                 }
             }
@@ -943,6 +950,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap();
 
@@ -963,14 +971,14 @@ impl SemanticScholar {
                             self.sleep(
                                 wait_time,
                                 format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                            );
+                            ).await;
                             continue;
                         }
                     }
                 }
                 Err(e) => {
                     max_retry_count -= 1;
-                    self.sleep(wait_time, &e.to_string());
+                    self.sleep(wait_time, &e.to_string()).await;
                     continue;
                 }
             }
@@ -1027,6 +1035,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap();
 
@@ -1050,14 +1059,14 @@ impl SemanticScholar {
                             self.sleep(
                                 wait_time,
                                 format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                            );
+                            ).await;
                             continue;
                         }
                     }
                 }
                 Err(e) => {
                     max_retry_count -= 1;
-                    self.sleep(wait_time, &e.to_string());
+                    self.sleep(wait_time, &e.to_string()).await;
                     continue;
                 }
             }
@@ -1107,6 +1116,7 @@ impl SemanticScholar {
         }
         let client = request::Client::builder()
             .default_headers(headers)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap();
 
@@ -1130,14 +1140,14 @@ impl SemanticScholar {
                             self.sleep(
                                 wait_time,
                                 format!("Error: {} Body: {}", &e.to_string(), &body).as_str(),
-                            );
+                            ).await;
                             continue;
                         }
                     }
                 }
                 Err(e) => {
                     max_retry_count -= 1;
-                    self.sleep(wait_time, &e.to_string());
+                    self.sleep(wait_time, &e.to_string()).await;
                     continue;
                 }
             }
