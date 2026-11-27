@@ -8,17 +8,20 @@ repository.workspace = true
 license.workspace = true
 
 [dependencies]
-anyhow.workspace = true
 dotenvy = "0.15.7"
-fxhash = "0.2.1"
-indicatif = "0.17.9"
-percent-encoding = "2.3.1"
-reqwest = "0.12.9"
-serde = { version = "1.0.216", features = ["derive"] }
-serde_json = "1.0.133"
-tokio = { version = "1.42.0", features = ["full"] }
-tracing = { version = "0.1.41", features = ["log"] }
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
+indicatif = { version = "0.18", optional = true }
+percent-encoding = "2.3.2"
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "time"] }
+tracing = "0.1.44"
+
+[features]
+default = []
+progress = ["dep:indicatif"]
 
 [dev-dependencies]
-serial_test = "3.2.0"
+serial_test = "4"
+wiremock = "0.6.5"

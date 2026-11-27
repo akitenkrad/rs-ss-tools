@@ -1,5 +1,5 @@
 use crate::structs::*;
-use crate::QueryParams;
+use crate::{QueryParams, SemanticScholar};
 
 // =============================================================================
 // Paper Deserialization Tests
@@ -10,34 +10,27 @@ fn test_paper_deserialization() {
     let json = include_str!("test_rsc/sample.json");
     let response = serde_json::from_str::<Paper>(json).unwrap();
 
-    assert_eq!(
-        response.paper_id.unwrap(),
-        "5c5751d45e298cea054f32b392c12c61027d2fe7"
-    );
+    assert_eq!(response.paper_id.unwrap(), "5c5751d45e298cea054f32b392c12c61027d2fe7");
     assert_eq!(response.corpus_id.unwrap(), 215416146);
     assert_eq!(
         response.url.unwrap(),
         "https://www.semanticscholar.org/paper/5c5751d45e298cea054f32b392c12c61027d2fe7"
     );
-    assert_eq!(
-        response.title.unwrap(),
-        "Construction of the Literature Graph in Semantic Scholar"
-    );
+    assert_eq!(response.title.unwrap(), "Construction of the Literature Graph in Semantic Scholar");
     assert_eq!(
         response.abstract_text.unwrap(),
-        "We describe a deployed scalable system for organizing published scientific literature into a heterogeneous graph to facilitate algorithmic manipulation and discovery."
+        concat!(
+            "We describe a deployed scalable system for organizing published scientific ",
+            "literature into a heterogeneous graph to facilitate algorithmic manipulation ",
+            "and discovery."
+        )
     );
-    assert_eq!(
-        response.venue.unwrap(),
-        "Annual Meeting of the Association for Computational Linguistics"
-    );
+    let expected_venue = "Annual Meeting of the Association for Computational Linguistics";
+    assert_eq!(response.venue.unwrap(), expected_venue);
 
     let pv = response.publication_venue.unwrap();
     assert_eq!(pv.id, "1e33b3be-b2ab-46e9-96e8-d4eb4bad6e44");
-    assert_eq!(
-        pv.name.unwrap(),
-        "Annual Meeting of the Association for Computational Linguistics"
-    );
+    assert_eq!(pv.name.unwrap(), "Annual Meeting of the Association for Computational Linguistics");
     assert_eq!(pv.type_name.unwrap(), "conference");
     assert_eq!(
         pv.alternate_names.unwrap(),
@@ -48,10 +41,7 @@ fn test_paper_deserialization() {
             "Meet Assoc Comput Linguistics"
         ]
     );
-    assert_eq!(
-        pv.url.unwrap(),
-        "https://www.aclweb.org/anthology/venues/acl/"
-    );
+    assert_eq!(pv.url.unwrap(), "https://www.aclweb.org/anthology/venues/acl/");
 
     let external_ids = response.external_ids.unwrap();
     assert_eq!(external_ids.doi.unwrap(), "10.18653/v1/2020.acl-main.447");
@@ -312,7 +302,7 @@ fn test_query_params_build_with_year() {
     let mut params = QueryParams::default();
     params.year("2020-2023");
     let result = params.build();
-    assert!(result.contains("year=2020-2023"));
+    assert!(result.contains("year=2020%2D2023"));
 }
 
 #[test]
@@ -320,7 +310,7 @@ fn test_query_params_build_with_publication_date() {
     let mut params = QueryParams::default();
     params.publication_date_or_year("2020-01-01:2023-12-31");
     let result = params.build();
-    assert!(result.contains("publicationDateOrYear=2020-01-01:2023-12-31"));
+    assert!(result.contains("publicationDateOrYear=2020%2D01%2D01%3A2023%2D12%2D31"));
 }
 
 #[test]
@@ -355,7 +345,7 @@ fn test_query_params_build_with_token() {
     let mut params = QueryParams::default();
     params.token("next_page_token");
     let result = params.build();
-    assert!(result.contains("token=next_page_token"));
+    assert!(result.contains("token=next%5Fpage%5Ftoken"));
 }
 
 #[test]
@@ -363,7 +353,7 @@ fn test_query_params_build_with_sort() {
     let mut params = QueryParams::default();
     params.sort("citationCount:desc");
     let result = params.build();
-    assert!(result.contains("sort=citationCount:desc"));
+    assert!(result.contains("sort=citationCount%3Adesc"));
 }
 
 #[test]
@@ -515,7 +505,8 @@ fn test_fields_of_study_to_string() {
     assert_eq!(FieldsOfStudy::Mathematics.to_string(), "Mathematics");
     assert_eq!(FieldsOfStudy::Engineering.to_string(), "Engineering");
     assert_eq!(FieldsOfStudy::EnvironmentalScience.to_string(), "Environmental Science");
-    assert_eq!(FieldsOfStudy::AgriculturalAndFoodScience.to_string(), "Agricultural and Food Science");
+    let field = FieldsOfStudy::AgriculturalAndFoodScience;
+    assert_eq!(field.to_string(), "Agricultural and Food Science");
     assert_eq!(FieldsOfStudy::Education.to_string(), "Education");
     assert_eq!(FieldsOfStudy::Law.to_string(), "Law");
     assert_eq!(FieldsOfStudy::Linguistics.to_string(), "Linguistics");
@@ -528,11 +519,7 @@ fn test_fields_of_study_to_string() {
 #[test]
 fn test_query_params_builder_chain() {
     let mut params = QueryParams::default();
-    params
-        .paper_id("abc123")
-        .query_text("test")
-        .min_citation_count(5)
-        .year("2020");
+    params.paper_id("abc123").query_text("test").min_citation_count(5).year("2020");
 
     assert_eq!(params.paper_id, "abc123");
     assert_eq!(params.query_text.unwrap(), "test");
@@ -653,4 +640,158 @@ fn test_query_params_author_fields_builder() {
     assert_eq!(fields.len(), 2);
     assert!(fields.contains(&AuthorField::Name));
     assert!(fields.contains(&AuthorField::HIndex));
+}
+
+// =============================================================================
+// Phase A regression tests
+// =============================================================================
+
+#[test]
+fn query_params_omits_open_access_pdf_when_false() {
+    let mut params = QueryParams::default();
+    params.open_access_pdf(false);
+
+    assert!(!params.build().contains("openAccessPdf"));
+}
+
+#[test]
+fn query_params_uses_paper_fields_in_preference_to_author_fields() {
+    let mut params = QueryParams::default();
+    params.fields(vec![PaperField::Title]);
+    params.author_fields(vec![AuthorField::Name]);
+
+    let query = params.build();
+    assert_eq!(query.matches("fields=").count(), 1);
+    assert!(query.contains("fields=title"));
+    assert!(!query.contains("name"));
+}
+
+#[test]
+fn query_params_uses_author_fields_when_paper_fields_are_absent() {
+    let mut params = QueryParams::default();
+    params.author_fields(vec![AuthorField::Name, AuthorField::HIndex]);
+
+    assert_eq!(params.build(), "?fields=name,hIndex");
+}
+
+#[test]
+fn query_params_percent_encodes_all_free_form_values() {
+    let mut params = QueryParams::default();
+    params.token("next page/+?");
+    params.sort("citationCount:desc,year");
+    params.year("2020/2021");
+    params.publication_date_or_year("2020-01-01:2020-12-31");
+
+    let query = params.build();
+    assert!(query.contains("token=next%20page%2F%2B%3F"));
+    assert!(query.contains("sort=citationCount%3Adesc%2Cyear"));
+    assert!(query.contains("year=2020%2F2021"));
+    assert!(query.contains("publicationDateOrYear=2020%2D01%2D01%3A2020%2D12%2D31"));
+}
+
+#[test]
+fn author_id_setter_stores_the_endpoint_identifier() {
+    let mut params = QueryParams::default();
+
+    params.author_id("1741101");
+
+    assert_eq!(params.paper_id, "1741101");
+}
+
+#[test]
+fn endpoint_multiple_paper_details_variant_is_spelled_correctly() {
+    assert_eq!(Endpoint::GetMultiplePaperDetails, Endpoint::default());
+}
+
+#[test]
+fn field_enums_implement_display_with_the_existing_text() {
+    fn assert_display<T: std::fmt::Display>(value: T, expected: &str) {
+        assert_eq!(format!("{value}"), expected);
+    }
+
+    assert_display(AuthorField::HIndex, "hIndex");
+    assert_display(
+        PaperField::Authors(vec![AuthorField::Name, AuthorField::HIndex]),
+        "authors.name,authors.hIndex",
+    );
+    assert_display(PublicationTypes::ClinicalTrial, "Clinical Trial");
+    assert_display(FieldsOfStudy::ComputerScience, "Computer Science");
+}
+
+#[test]
+fn semantic_scholar_debug_redacts_api_key() {
+    let secret = "super-secret-semantic-scholar-key";
+    let client = SemanticScholar::builder().api_key(secret).build().unwrap();
+
+    let debug = format!("{client:?}");
+    assert!(!debug.contains(secret));
+    assert!(debug.contains("***"));
+}
+
+// =============================================================================
+// Phase B response and endpoint tests
+// =============================================================================
+
+#[test]
+fn paper_bulk_search_response_deserializes_complete_data() {
+    let response: PaperBulkSearchResponse = serde_json::from_str(
+        r#"{
+            "total": 2,
+            "token": "next-page",
+            "data": [
+                {"paperId": "paper-1"},
+                {"paperId": "paper-2"}
+            ]
+        }"#,
+    )
+    .unwrap();
+
+    assert_eq!(response.total, 2);
+    assert_eq!(response.token.as_deref(), Some("next-page"));
+    assert_eq!(response.data.len(), 2);
+}
+
+#[test]
+fn paper_bulk_search_response_treats_null_or_missing_data_as_empty() {
+    let null_json = r#"{"total": 0, "token": null, "data": null}"#;
+    let missing_json = r#"{"total": 0, "token": null}"#;
+    let null_data: PaperBulkSearchResponse = serde_json::from_str(null_json).unwrap();
+    let missing_data: PaperBulkSearchResponse = serde_json::from_str(missing_json).unwrap();
+
+    assert!(null_data.data.is_empty());
+    assert!(missing_data.data.is_empty());
+    assert_eq!(null_data.token, None);
+    assert_eq!(missing_data.token, None);
+}
+
+#[test]
+fn autocomplete_match_deserializes_authors_year() {
+    let value: AutocompleteMatch = serde_json::from_str(
+        r#"{
+            "id": "paper-1",
+            "title": "Attention Is All You Need",
+            "authorsYear": "Vaswani et al., 2017"
+        }"#,
+    )
+    .unwrap();
+
+    assert_eq!(value.id, "paper-1");
+    assert_eq!(value.title, "Attention Is All You Need");
+    assert_eq!(value.authors_year.as_deref(), Some("Vaswani et al., 2017"));
+
+    let without_authors_year_json = r#"{"id": "paper-2", "title": "Untitled metadata"}"#;
+    let parsed: serde_json::Result<AutocompleteMatch> = serde_json::from_str(without_authors_year_json);
+    let without_authors_year = parsed.unwrap();
+    assert_eq!(without_authors_year.authors_year, None);
+}
+
+#[test]
+fn endpoint_includes_phase_b_operations() {
+    let variants = [
+        Endpoint::SearchPapersInBulk,
+        Endpoint::GetMultipleAuthorDetails,
+        Endpoint::AutocompletePaper,
+    ];
+
+    assert_eq!(variants.len(), 3);
 }

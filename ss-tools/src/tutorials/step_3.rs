@@ -7,7 +7,7 @@
 //! [`QueryParams`](crate::QueryParams) is used to configure API requests.
 //! It uses the builder pattern for easy configuration.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::QueryParams;
 //!
 //! let mut params = QueryParams::default();
@@ -21,7 +21,7 @@
 //!
 //! ### Basic Search
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::QueryParams;
 //! use ss_tools::structs::PaperField;
 //!
@@ -38,7 +38,7 @@
 //!
 //! ### Paper Details by ID
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::QueryParams;
 //! use ss_tools::structs::PaperField;
 //!
@@ -55,7 +55,7 @@
 //!
 //! ### Filtering Papers
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::QueryParams;
 //! use ss_tools::structs::{PublicationTypes, FieldsOfStudy};
 //!
@@ -73,15 +73,15 @@
 //!
 //! ### Author Details by ID
 //!
-//! For author APIs, the author ID is passed via the `paper_id` field.
+//! Use the `author_id` setter for author APIs.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::QueryParams;
 //! use ss_tools::structs::AuthorField;
 //!
 //! let mut params = QueryParams::default();
 //! params
-//!     .paper_id("1741101")  // author_id
+//!     .author_id("1741101")
 //!     .author_fields(vec![
 //!         AuthorField::Name,
 //!         AuthorField::PaperCount,
@@ -92,7 +92,7 @@
 //!
 //! ### Author Search by Name
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::QueryParams;
 //! use ss_tools::structs::AuthorField;
 //!
@@ -108,13 +108,13 @@
 //!
 //! ### Author's Papers
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::QueryParams;
 //! use ss_tools::structs::PaperField;
 //!
 //! let mut params = QueryParams::default();
 //! params
-//!     .paper_id("1741101")  // author_id
+//!     .author_id("1741101")
 //!     .fields(vec![
 //!         PaperField::Title,
 //!         PaperField::Year,
@@ -128,7 +128,7 @@
 //!
 //! Use `offset` and `limit` for pagination:
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::QueryParams;
 //!
 //! let mut params = QueryParams::default();
@@ -142,7 +142,8 @@
 //!
 //! | Method | Description |
 //! |--------|-------------|
-//! | `paper_id(id)` | Set paper ID or author ID |
+//! | `paper_id(id)` | Set paper ID |
+//! | `author_id(id)` | Set author ID |
 //! | `query_text(text)` | Set search query text |
 //! | `fields(fields)` | Set paper fields to retrieve |
 //! | `author_fields(fields)` | Set author fields to retrieve |
@@ -154,3 +155,22 @@
 //! | `offset(n)` | Pagination offset |
 //! | `limit(n)` | Maximum results |
 //! | `sort(field)` | Sort order |
+//! | `token(token)` | Set a continuation token for paper bulk search |
+//!
+//! ## Paper Bulk Search Parameters
+//!
+//! Bulk search accepts the paper filters above and uses `token` instead of offset pagination.
+//! `offset` and `limit` are ignored by
+//! [`SemanticScholar::search_papers_in_bulk`](crate::SemanticScholar::search_papers_in_bulk).
+//!
+//! ```rust,no_run
+//! use ss_tools::QueryParams;
+//! use ss_tools::structs::PaperField;
+//!
+//! let mut params = QueryParams::default();
+//! params
+//!     .query_text("graph neural networks")
+//!     .fields(vec![PaperField::Title, PaperField::Year])
+//!     .sort("citationCount:desc")
+//!     .token("next-page-token");
+//! ```

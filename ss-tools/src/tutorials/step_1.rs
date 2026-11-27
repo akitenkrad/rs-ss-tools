@@ -27,21 +27,22 @@
 //! This is a simple example to get you started with `ss-tools`.  
 //! The following code snippet shows how to query a paper by its title:
 //!
-//! ```rust
-//! use anyhow::Result;
-//! use ss_tools::{SemanticScholar, QueryParams};
+//! ```rust,no_run
+//! use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
 //! let query_text = "Attention Is All You Need";
 //!
 //! // Create a new instance of SemanticScholar
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
 //! query_params.query_text(query_text);
 //!
 //! let max_retry_count = 5;
 //! let wait_time = 10;
-//! let paper = ss.query_a_paper_by_title(query_params, max_retry_count, wait_time).await.unwrap();
+//! let paper = ss
+//!     .query_a_paper_by_title(query_params, max_retry_count, wait_time)
+//!     .await?;
 //!
 //! assert_eq!(
 //!    paper.title.clone().unwrap().to_lowercase(),

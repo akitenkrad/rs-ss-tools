@@ -6,14 +6,14 @@
 //!
 //! ### Query a Paper by Title
 //!
-//! Search for a single paper by title using [`SemanticScholar::query_a_paper_by_title`](crate::SemanticScholar::query_a_paper_by_title).
+//! Search for a single paper by title using
+//! [`SemanticScholar::query_a_paper_by_title`](crate::SemanticScholar::query_a_paper_by_title).
 //!
-//! ```rust
-//! # use anyhow::Result;
-//! # use ss_tools::{SemanticScholar, QueryParams};
+//! ```rust,no_run
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
 //! query_params.query_text("Attention Is All You Need");
 //!
@@ -25,14 +25,14 @@
 //!
 //! ### Query Multiple Papers by Title
 //!
-//! Search for multiple papers by title using [`SemanticScholar::query_papers_by_title`](crate::SemanticScholar::query_papers_by_title).
+//! Search for multiple papers by title using
+//! [`SemanticScholar::query_papers_by_title`](crate::SemanticScholar::query_papers_by_title).
 //!
 //! ```rust,no_run
-//! # use anyhow::Result;
-//! # use ss_tools::{SemanticScholar, QueryParams};
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
 //! query_params.query_text("deep learning");
 //!
@@ -44,15 +44,15 @@
 //!
 //! ### Query Paper Details
 //!
-//! Get detailed information about a paper using [`SemanticScholar::query_paper_details`](crate::SemanticScholar::query_paper_details).
+//! Get detailed information about a paper using
+//! [`SemanticScholar::query_paper_details`](crate::SemanticScholar::query_paper_details).
 //!
-//! ```rust
-//! # use anyhow::Result;
-//! # use ss_tools::{SemanticScholar, QueryParams};
+//! ```rust,no_run
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # use ss_tools::structs::PaperField;
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
 //! query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
 //! query_params.fields(vec![
@@ -69,15 +69,15 @@
 //!
 //! ### Query Paper Citations
 //!
-//! Get papers that cite a specific paper using [`SemanticScholar::query_paper_citations`](crate::SemanticScholar::query_paper_citations).
+//! Get papers that cite a specific paper using
+//! [`SemanticScholar::query_paper_citations`](crate::SemanticScholar::query_paper_citations).
 //!
-//! ```rust
-//! # use anyhow::Result;
-//! # use ss_tools::{SemanticScholar, QueryParams};
+//! ```rust,no_run
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # use ss_tools::structs::PaperField;
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
 //! query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
 //! query_params.fields(vec![PaperField::Title, PaperField::Year]);
@@ -90,15 +90,15 @@
 //!
 //! ### Query Paper References
 //!
-//! Get papers referenced by a specific paper using [`SemanticScholar::query_paper_references`](crate::SemanticScholar::query_paper_references).
+//! Get papers referenced by a specific paper using
+//! [`SemanticScholar::query_paper_references`](crate::SemanticScholar::query_paper_references).
 //!
-//! ```rust
-//! # use anyhow::Result;
-//! # use ss_tools::{SemanticScholar, QueryParams};
+//! ```rust,no_run
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # use ss_tools::structs::PaperField;
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
 //! query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
 //! query_params.fields(vec![PaperField::Title, PaperField::Year]);
@@ -111,15 +111,15 @@
 //!
 //! ### Query Paper Authors
 //!
-//! Get authors of a specific paper using [`SemanticScholar::query_paper_authors`](crate::SemanticScholar::query_paper_authors).
+//! Get authors of a specific paper using
+//! [`SemanticScholar::query_paper_authors`](crate::SemanticScholar::query_paper_authors).
 //!
-//! ```rust
-//! # use anyhow::Result;
-//! # use ss_tools::{SemanticScholar, QueryParams};
+//! ```rust,no_run
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # use ss_tools::structs::AuthorField;
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
 //! query_params.paper_id("204e3073870fae3d05bcbc2f6a8e263d9b72e776");
 //! query_params.author_fields(vec![
@@ -138,17 +138,17 @@
 //!
 //! ### Query Author Details
 //!
-//! Get detailed information about an author using [`SemanticScholar::query_author_details`](crate::SemanticScholar::query_author_details).
+//! Get detailed information about an author using
+//! [`SemanticScholar::query_author_details`](crate::SemanticScholar::query_author_details).
 //!
-//! ```rust
-//! # use anyhow::Result;
-//! # use ss_tools::{SemanticScholar, QueryParams};
+//! ```rust,no_run
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # use ss_tools::structs::AuthorField;
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
-//! query_params.paper_id("1741101");  // author_id is passed via paper_id field
+//! query_params.author_id("1741101");
 //! query_params.author_fields(vec![
 //!     AuthorField::Name,
 //!     AuthorField::PaperCount,
@@ -164,15 +164,15 @@
 //!
 //! ### Search Authors
 //!
-//! Search for authors by name using [`SemanticScholar::search_authors`](crate::SemanticScholar::search_authors).
+//! Search for authors by name using
+//! [`SemanticScholar::search_authors`](crate::SemanticScholar::search_authors).
 //!
-//! ```rust
-//! # use anyhow::Result;
-//! # use ss_tools::{SemanticScholar, QueryParams};
+//! ```rust,no_run
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # use ss_tools::structs::AuthorField;
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
 //! query_params.query_text("Geoffrey Hinton");
 //! query_params.author_fields(vec![
@@ -189,17 +189,17 @@
 //!
 //! ### Query Author Papers
 //!
-//! Get papers written by a specific author using [`SemanticScholar::query_author_papers`](crate::SemanticScholar::query_author_papers).
+//! Get papers written by a specific author using
+//! [`SemanticScholar::query_author_papers`](crate::SemanticScholar::query_author_papers).
 //!
-//! ```rust
-//! # use anyhow::Result;
-//! # use ss_tools::{SemanticScholar, QueryParams};
+//! ```rust,no_run
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
 //! # use ss_tools::structs::PaperField;
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let mut ss = SemanticScholar::new();
+//! let ss = SemanticScholar::new();
 //! let mut query_params = QueryParams::default();
-//! query_params.paper_id("1741101");  // author_id
+//! query_params.author_id("1741101");
 //! query_params.fields(vec![
 //!     PaperField::Title,
 //!     PaperField::Year,
@@ -215,13 +215,13 @@
 //!
 //! ## Bulk Operations
 //!
-//! ### Bulk Query by IDs
+//! ### Batch Query by IDs
 //!
-//! Get multiple papers at once using [`SemanticScholar::bulk_query_by_ids`](crate::SemanticScholar::bulk_query_by_ids).
+//! Get multiple papers at once using
+//! [`SemanticScholar::query_papers_in_batch`](crate::SemanticScholar::query_papers_in_batch).
 //!
-//! ```rust
-//! # use anyhow::Result;
-//! # use ss_tools::SemanticScholar;
+//! ```rust,no_run
+//! # use ss_tools::{Result, SemanticScholar};
 //! # use ss_tools::structs::PaperField;
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
@@ -231,9 +231,83 @@
 //! ];
 //! let fields = vec![PaperField::Title, PaperField::CitationCount];
 //!
-//! let mut ss = SemanticScholar::new();
-//! let papers = ss.bulk_query_by_ids(paper_ids, fields, 5, 10).await?;
+//! let ss = SemanticScholar::new();
+//! let papers = ss
+//!     .query_papers_in_batch(&paper_ids, fields, 5, 10)
+//!     .await?;
 //! println!("Retrieved {} papers", papers.len());
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Search Papers in Bulk
+//!
+//! Stream large paper result sets using
+//! [`SemanticScholar::search_papers_in_bulk`](crate::SemanticScholar::search_papers_in_bulk).
+//! Continue until the response token is `None`.
+//!
+//! ```rust,no_run
+//! # use ss_tools::{QueryParams, Result, SemanticScholar};
+//! # use ss_tools::structs::PaperField;
+//! # #[tokio::main]
+//! # async fn main() -> Result<()> {
+//! let ss = SemanticScholar::new();
+//! let mut token: Option<String> = None;
+//!
+//! loop {
+//!     let mut params = QueryParams::default();
+//!     params
+//!         .query_text("graph neural networks")
+//!         .fields(vec![PaperField::Title, PaperField::Year]);
+//!     if let Some(next_token) = token.as_deref() {
+//!         params.token(next_token);
+//!     }
+//!
+//!     let response = ss.search_papers_in_bulk(params, 5, 10).await?;
+//!     println!("Retrieved {} papers", response.data.len());
+//!     token = response.token;
+//!     if token.is_none() {
+//!         break;
+//!     }
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Query Authors in Batch
+//!
+//! Get up to 1,000 authors while preserving missing IDs as `None` using
+//! [`SemanticScholar::query_authors_in_batch`](crate::SemanticScholar::query_authors_in_batch).
+//!
+//! ```rust,no_run
+//! # use ss_tools::{Result, SemanticScholar};
+//! # use ss_tools::structs::AuthorField;
+//! # #[tokio::main]
+//! # async fn main() -> Result<()> {
+//! let ss = SemanticScholar::new();
+//! let author_ids = ["1741101", "missing-author"];
+//! let authors = ss
+//!     .query_authors_in_batch(&author_ids, vec![AuthorField::Name], 5, 10)
+//!     .await?;
+//! println!("Received {} entries", authors.len());
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Autocomplete a Paper Title
+//!
+//! Suggest paper titles using
+//! [`SemanticScholar::autocomplete_paper`](crate::SemanticScholar::autocomplete_paper).
+//!
+//! ```rust,no_run
+//! # use ss_tools::{Result, SemanticScholar};
+//! # #[tokio::main]
+//! # async fn main() -> Result<()> {
+//! let ss = SemanticScholar::new();
+//! let matches = ss.autocomplete_paper("attention is all", 5, 10).await?;
+//! for suggestion in matches {
+//!     println!("{}", suggestion.title);
+//! }
 //! # Ok(())
 //! # }
 //! ```

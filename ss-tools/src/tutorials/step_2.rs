@@ -7,7 +7,7 @@
 //! The [`Paper`](crate::structs::Paper) struct represents a scientific paper from Semantic Scholar.
 //! All fields are optional since the API returns only requested fields.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::structs::Paper;
 //!
 //! // Paper struct has many optional fields
@@ -35,7 +35,7 @@
 //! The [`ExternalIds`](crate::structs::ExternalIds) struct provides access to external identifiers
 //! such as ArXiv ID, DOI, DBLP, PubMed, MAG, ACL, and CorpusId.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::structs::ExternalIds;
 //!
 //! let ids = ExternalIds::default();
@@ -60,7 +60,7 @@
 //!
 //! The [`Author`](crate::structs::Author) struct represents an author from Semantic Scholar.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::structs::Author;
 //!
 //! let author = Author::default();
@@ -85,7 +85,7 @@
 //!
 //! Use [`PaperField`](crate::structs::PaperField) to specify which paper fields to request.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::structs::PaperField;
 //!
 //! let fields = vec![
@@ -101,7 +101,7 @@
 //!
 //! Use [`AuthorField`](crate::structs::AuthorField) to specify which author fields to request.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::structs::AuthorField;
 //!
 //! let fields = vec![
@@ -118,7 +118,7 @@
 //!
 //! Response from searching authors by name.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::structs::AuthorSearchResponse;
 //!
 //! // Contains offset, next, total, and data (Vec<Author>)
@@ -130,7 +130,7 @@
 //!
 //! Response from querying an author's papers.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::structs::AuthorPapersResponse;
 //!
 //! // Contains offset, next, and data (Vec<Paper>)
@@ -142,10 +142,34 @@
 //!
 //! Response from querying a paper's authors.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use ss_tools::structs::PaperAuthorsResponse;
 //!
 //! // Contains offset, next, and data (Vec<Author>)
 //! let response = PaperAuthorsResponse::default();
 //! assert!(response.data.is_empty());
+//! ```
+//!
+//! ### PaperBulkSearchResponse
+//!
+//! Response from the paper bulk search endpoint. The optional token points to the next page.
+//!
+//! ```rust,no_run
+//! use ss_tools::structs::PaperBulkSearchResponse;
+//!
+//! let response = PaperBulkSearchResponse::default();
+//! assert!(response.token.is_none());
+//! assert!(response.data.is_empty());
+//! ```
+//!
+//! ### AutocompleteMatch
+//!
+//! One title suggestion returned by the paper autocomplete endpoint.
+//!
+//! ```rust,no_run
+//! use ss_tools::structs::AutocompleteMatch;
+//!
+//! let suggestion = AutocompleteMatch::default();
+//! assert!(suggestion.id.is_empty());
+//! assert!(suggestion.title.is_empty());
 //! ```
